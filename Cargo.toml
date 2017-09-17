@@ -1,0 +1,7 @@
+[package]
+name = "conftaal"
+version = "0.1.0"
+authors = ["Mara Bos <m-ou.se@m-ou.se>"]
+
+[dependencies]
+stringpool = { path = "../stringpool" }
