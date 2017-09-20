@@ -37,7 +37,7 @@ pub enum Order {
 }
 
 // A lower value means a higher precedence.
-pub fn get_precedence(op: Operator) -> i32 {
+fn get_precedence(op: Operator) -> i32 {
 	use operator::Operator::*;
 	match op {
 		Dot             |
@@ -70,7 +70,7 @@ pub fn get_precedence(op: Operator) -> i32 {
 	}
 }
 
-pub fn get_associativity(precedence: i32) -> Order {
+fn get_associativity(precedence: i32) -> Order {
 	match precedence {
 		4     => Order::Right,     // **
 		8 | 9 => Order::Unordered, // > < >= <= != ==
