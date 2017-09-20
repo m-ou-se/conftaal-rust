@@ -64,11 +64,11 @@ impl<'a> Parser<'a> {
 			}
 			Ok(Some(expr))
 
-		} else if let Some(op_source) = self.source.consume_if(|c| "!~-+".contains(c)) {
+		} else if let Some((op_source, op)) = self.parse_unary_operator() {
 			match self.parse_expression_atom(/* end */)? {
 				None => Err(()), // TODO: "missing expression after unary `{}' operator"
 				Some(subexpr) => Ok(Some(Expression::Operator{
-					op: Operator::Plus, // TODO
+					op: op,
 					op_source: op_source,
 					lhs: None,
 					rhs: Rc::new(subexpr),
@@ -142,6 +142,16 @@ impl<'a> Parser<'a> {
 		};
 
 		Ok(true)
+	}
+
+	fn parse_unary_operator(&mut self) -> Option<(&'a str, Operator)> {
+		match self.source.as_bytes().get(0) {
+			Some(&b'+') => Some(Operator::UnaryPlus),
+			Some(&b'-') => Some(Operator::UnaryMinus),
+			Some(&b'!') => Some(Operator::Complement),
+			Some(&b'~') => Some(Operator::LogicalNot),
+			_ => None,
+		}.map(|op| (self.source.consume_n(1), op))
 	}
 
 	fn parse_binary_operator(&mut self) -> Option<(&'a str, Operator)> {
