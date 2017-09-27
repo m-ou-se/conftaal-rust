@@ -3,5 +3,13 @@ name = "conftaal"
 version = "0.1.0"
 authors = ["Mara Bos <m-ou.se@m-ou.se>"]
 
+[lib]
+name = "conftaal"
+path = "src/lib.rs"
+
+[[bin]]
+name = "conftaal-test"
+path = "src/test.rs"
+
 [dependencies]
 stringpool = { path = "../stringpool" }
