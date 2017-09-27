@@ -210,8 +210,6 @@ impl<'a> Parser<'a> {
 		unimplemented!()
 	}
 
-	//optional<string_view> parse_end(Matcher const &, bool consume = true);
-
 }
 
 fn find_lhs<'a, 'b>(
