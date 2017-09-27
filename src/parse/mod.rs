@@ -3,8 +3,8 @@ mod error;
 mod hex;
 mod matcher;
 
-use std::rc::Rc;
 use std::mem;
+use std::rc::Rc;
 
 extern crate stringpool;
 use self::stringpool::stringtracker::StringTracker;
