@@ -22,6 +22,10 @@ impl<'a, 'b> Matcher<'a, 'b> {
 		Matcher{ mode: m, or_before: None }
 	}
 
+	pub fn specific(s: &'static str) -> Self {
+		Matcher{ mode: Specific(s), or_before: None }
+	}
+
 	pub fn bracket(left: &'a str, right: &'static str) -> Self {
 		Matcher{ mode: MatchingBracket(left, right), or_before: None }
 	}
@@ -117,6 +121,12 @@ impl<'a, 'b> Matcher<'a, 'b> {
 				_ => vec![],
 			},
 		}
+	}
+
+	pub fn or_before(mut self, or_before: &'b Matcher<'a, 'b>) -> Self {
+		assert!(self.or_before.is_none());
+		self.or_before = Some(or_before);
+		self
 	}
 }
 
