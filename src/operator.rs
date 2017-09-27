@@ -80,8 +80,8 @@ fn get_precedence(op: Operator) -> i32 {
 
 fn get_associativity(precedence: i32) -> Order {
 	match precedence {
-		4     => Order::Right,     // **
-		8 | 9 => Order::Unordered, // > < >= <= != ==
+		3     => Order::Right,     // **
+		7 | 8 => Order::Unordered, // > < >= <= != ==
 		_     => Order::Left,
 	}
 }
