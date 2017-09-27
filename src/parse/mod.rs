@@ -32,7 +32,7 @@ fn error<'a>(location: &'a str, message: String) -> Error<'a> {
 
 impl<'a> Parser<'a> {
 
-	pub fn parse_list(&mut self, end: &Matcher<'a>) -> Expression<'a> {
+	pub fn parse_list<'b>(&mut self, end: &Matcher<'a, 'b>) -> Expression<'a> {
 		unimplemented!();
 	}
 
@@ -57,7 +57,7 @@ impl<'a> Parser<'a> {
 		}
 	}
 
-	pub fn parse_expression(&mut self, end: &Matcher<'a>) -> Result<Expression<'a>, Error<'a>> {
+	pub fn parse_expression<'b>(&mut self, end: &Matcher<'a, 'b>) -> Result<Expression<'a>, Error<'a>> {
 		let mut expr = self.parse_expression_atom(end)?.ok_or_else(||
 			error(&self.source[..0], "missing expression".to_string())
 		)?;
@@ -65,7 +65,7 @@ impl<'a> Parser<'a> {
 		Ok(expr)
 	}
 
-	fn parse_expression_atom(&mut self, end: &Matcher<'a>) -> Result<Option<Expression<'a>>, Error<'a>> {
+	fn parse_expression_atom<'b>(&mut self, end: &Matcher<'a, 'b>) -> Result<Option<Expression<'a>>, Error<'a>> {
 
 		if end.parse_end(&mut self.source)? { return Ok(None); }
 
@@ -114,7 +114,7 @@ impl<'a> Parser<'a> {
 		}
 	}
 
-	fn parse_more_expression(&mut self, expr: &mut Expression<'a>, end: &Matcher<'a>) -> Result<bool, Error<'a>> {
+	fn parse_more_expression<'b>(&mut self, expr: &mut Expression<'a>, end: &Matcher<'a, 'b>) -> Result<bool, Error<'a>> {
 
 		if end.parse_end(&mut self.source)? { return Ok(false); }
 

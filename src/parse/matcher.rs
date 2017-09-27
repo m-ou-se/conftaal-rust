@@ -4,34 +4,34 @@ use super::consume::Consume;
 pub enum MatchMode<'a> {
 	Nothing,
 	EndOfFile,
-	Specific(&'a str),
-	MatchingBracket(&'a str, &'a str),
+	Specific(&'static str),
+	MatchingBracket(&'a str, &'static str),
 	ElementEnd, // , or ; or \n
 }
 
 pub use self::MatchMode::*;
 
-pub struct Matcher<'a> {
+pub struct Matcher<'a: 'b, 'b> {
 	pub mode: MatchMode<'a>,
-	pub or_before: Option<&'a Matcher<'a>>
+	pub or_before: Option<&'b Matcher<'a, 'b>>
 }
 
-impl<'a> Matcher<'a> {
+impl<'a, 'b> Matcher<'a, 'b> {
 
-	pub fn new(m: MatchMode<'a>) -> Matcher<'a> {
+	pub fn new(m: MatchMode<'a>) -> Self {
 		Matcher{ mode: m, or_before: None }
 	}
 
-	pub fn bracket(left: &'a str, right: &'a str) -> Matcher<'a> {
+	pub fn bracket(left: &'a str, right: &'static str) -> Self {
 		Matcher{ mode: MatchingBracket(left, right), or_before: None }
 	}
 
 	// TODO: Just return a boolean?
-	fn try_parse<'b>(
+	fn try_parse<'c>(
 		&self,
-		source: &mut &'b str,
+		source: &mut &'c str,
 		eat_whitespace: bool
-	) -> Option<&'b str> {
+	) -> Option<&'c str> {
 		if eat_whitespace {
 			let skip_newlines = match self.mode {
 				ElementEnd => false,
@@ -66,10 +66,10 @@ impl<'a> Matcher<'a> {
 		None
 	}
 
-	fn parse<'b: 'a>(
+	fn parse<'c: 'a>(
 		&self,
-		source: &mut &'b str
-	) -> Result<&'b str, Error<'a>> {
+		source: &mut &'c str
+	) -> Result<&'c str, Error<'a>> {
 		self.try_parse(source, true).ok_or_else(|| self.error(source))
 	}
 
