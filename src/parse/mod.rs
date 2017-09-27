@@ -32,8 +32,12 @@ fn error<'a>(location: &'a str, message: String) -> Error<'a> {
 
 impl<'a> Parser<'a> {
 
-	pub fn parse_list<'b>(&mut self, end: &Matcher<'a, 'b>) -> Expression<'a> {
-		unimplemented!();
+	pub fn parse_list<'b>(&mut self, end: &Matcher<'a, 'b>) -> Result<Vec<Rc<Expression<'a>>>, Error<'a>> {
+		let mut elements = Vec::new();
+		loop {
+			if end.parse_end(&mut self.source)? { return Ok(elements); }
+			elements.push(Rc::new(self.parse_expression(&Matcher::specific(",").or_before(&end))?));
+		}
 	}
 
 	pub fn parse_object(&mut self /*, end */) -> Expression<'a> {
@@ -123,8 +127,8 @@ impl<'a> Parser<'a> {
 		)?;
 
 		let rhs = match op {
-			BinaryOperator::Call  => self.parse_list(&Matcher::bracket(op_source, ")")),
-			BinaryOperator::Index => self.parse_list(&Matcher::bracket(op_source, "]")),
+			BinaryOperator::Call  => Expression::Literal(Literal::List{elements: self.parse_list(&Matcher::bracket(op_source, ")"))?}),
+			BinaryOperator::Index => Expression::Literal(Literal::List{elements: self.parse_list(&Matcher::bracket(op_source, "]"))?}),
 			BinaryOperator::Dot => {
 				self.parse_identifier().map(|ident|
 					Expression::Identifier(ident)
