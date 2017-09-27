@@ -1,18 +1,37 @@
 use std::rc::Rc;
 
-use operator::*;
+use operator::{UnaryOperator,BinaryOperator,Operator};
 
 #[derive(Debug)]
 pub enum Expression<'a> {
 	Identifier(&'a str),
-	Operator{
-		op: Operator,
+	Op{
 		op_source: &'a str,
-		lhs: Option<Rc<Expression<'a>>>,
+		op_and_lhs: OpAndLhs<'a>,
 		rhs: Rc<Expression<'a>>,
-		parenthesized: bool
+		parenthesized: bool,
 	},
 	Literal(Literal<'a>),
+}
+
+#[derive(Debug)]
+pub enum OpAndLhs<'a> {
+	UnaryOp{
+		op: UnaryOperator,
+	},
+	BinaryOp{
+		op: BinaryOperator,
+		lhs: Rc<Expression<'a>>,
+	},
+}
+
+impl<'a> OpAndLhs<'a> {
+	pub fn op(&self) -> Operator {
+		match self {
+			&OpAndLhs::UnaryOp{op} => Operator::Unary(op),
+			&OpAndLhs::BinaryOp{op, ..} => Operator::Binary(op),
+		}
+	}
 }
 
 #[derive(Debug)]

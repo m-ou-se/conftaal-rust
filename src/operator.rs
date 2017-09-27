@@ -1,5 +1,13 @@
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum Operator {
+pub enum UnaryOperator {
+	/* + */ Plus,
+	/* - */ Minus,
+	/* ~ */ Complement,
+	/* ! */ LogicalNot,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum BinaryOperator {
 	/* .  */ Dot,
 	/* [] */ Index,
 	/* () */ Call,
@@ -10,10 +18,6 @@ pub enum Operator {
 	/* <  */ Less,
 	/* >= */ GreaterOrEqual,
 	/* <= */ LessOrEqual,
-	/* +  */ UnaryPlus,
-	/* -  */ UnaryMinus,
-	/* ~  */ Complement,
-	/* !  */ LogicalNot,
 	/* +  */ Plus,
 	/* -  */ Minus,
 	/* *  */ Times,
@@ -29,6 +33,12 @@ pub enum Operator {
 	/* || */ LogicalOr
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Operator {
+	Unary(UnaryOperator),
+	Binary(BinaryOperator),
+}
+
 #[derive(Clone, Copy)]
 pub enum Order {
 	Left,
@@ -39,34 +49,32 @@ pub enum Order {
 // A lower value means a higher precedence.
 fn get_precedence(op: Operator) -> i32 {
 	use operator::Operator::*;
+	use operator::BinaryOperator::*;
 	match op {
-		Dot             |
-		Colon           |
-		Call            |
-		Index           => 1,
-		UnaryPlus       |
-		UnaryMinus      |
-		Complement      |
-		LogicalNot      => 3,
-		Power           => 4,
-		Times           |
-		Divide          |
-		Modulo          => 5,
-		Plus            |
-		Minus           => 6,
-		LeftShift       |
-		RightShift      => 7,
-		Greater         |
-		Less            |
-		GreaterOrEqual  |
-		LessOrEqual     => 8,
-		Equal           |
-		Inequal         => 9,
-		BitAnd          => 10,
-		BitXor          => 11,
-		BitOr           => 12,
-		LogicalAnd      => 13,
-		LogicalOr       => 14,
+		Binary(Dot)            |
+		Binary(Colon)          |
+		Binary(Call)           |
+		Binary(Index)          => 1,
+		Unary(_)               => 2,
+		Binary(Power)          => 3,
+		Binary(Times)          |
+		Binary(Divide)         |
+		Binary(Modulo)         => 4,
+		Binary(Plus)           |
+		Binary(Minus)          => 5,
+		Binary(LeftShift)      |
+		Binary(RightShift)     => 6,
+		Binary(Greater)        |
+		Binary(Less)           |
+		Binary(GreaterOrEqual) |
+		Binary(LessOrEqual)    => 7,
+		Binary(Equal)          |
+		Binary(Inequal)        => 8,
+		Binary(BitAnd)         => 9,
+		Binary(BitXor)         => 10,
+		Binary(BitOr)          => 11,
+		Binary(LogicalAnd)     => 12,
+		Binary(LogicalOr)      => 13,
 	}
 }
 

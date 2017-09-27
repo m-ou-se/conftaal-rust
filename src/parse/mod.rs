@@ -9,8 +9,8 @@ use std::rc::Rc;
 extern crate stringpool;
 use self::stringpool::stringtracker::StringTracker;
 
-use expression::*;
-use operator::{Operator,Order,higher_precedence};
+use expression::{Expression,OpAndLhs,Literal};
+use operator::{UnaryOperator,BinaryOperator,Operator,Order,higher_precedence};
 use self::consume::Consume;
 use self::error::{Error, Message};
 use self::matcher::Matcher;
@@ -71,7 +71,7 @@ impl<'a> Parser<'a> {
 
 		if let Some(open) = self.source.consume("(") {
 			let mut expr = self.parse_expression(&Matcher::bracket(open, ")"))?;
-			if let &mut Expression::Operator{ref mut parenthesized, ..} = &mut expr {
+			if let &mut Expression::Op{ref mut parenthesized, ..} = &mut expr {
 				*parenthesized = true;
 			}
 			Ok(Some(expr))
@@ -79,10 +79,9 @@ impl<'a> Parser<'a> {
 		} else if let Some((op_source, op)) = self.parse_unary_operator() {
 			match self.parse_expression_atom(end)? {
 				None => Err(error(&self.source[..0], format!("missing expression after unary `{}' operator", op_source))),
-				Some(subexpr) => Ok(Some(Expression::Operator{
-					op: op,
+				Some(subexpr) => Ok(Some(Expression::Op{
 					op_source: op_source,
-					lhs: None,
+					op_and_lhs: OpAndLhs::UnaryOp{op: op},
 					rhs: Rc::new(subexpr),
 					parenthesized: false
 				}))
@@ -124,9 +123,9 @@ impl<'a> Parser<'a> {
 		)?;
 
 		let rhs = match op {
-			Operator::Call  => self.parse_list(&Matcher::bracket(op_source, ")")),
-			Operator::Index => self.parse_list(&Matcher::bracket(op_source, "]")),
-			Operator::Dot => {
+			BinaryOperator::Call  => self.parse_list(&Matcher::bracket(op_source, ")")),
+			BinaryOperator::Index => self.parse_list(&Matcher::bracket(op_source, "]")),
+			BinaryOperator::Dot => {
 				self.parse_identifier().map(|ident|
 					Expression::Identifier(ident)
 				).ok_or_else(||
@@ -145,10 +144,12 @@ impl<'a> Parser<'a> {
 		// Use a dummy value of Identifier("") while we swap the nodes around.
 		let new_lhs = Rc::new(mem::replace(old_lhs, Expression::Identifier("")));
 
-		*old_lhs = Expression::Operator{
-			op: op,
+		*old_lhs = Expression::Op{
 			op_source: op_source,
-			lhs: Some(new_lhs),
+			op_and_lhs: OpAndLhs::BinaryOp{
+				op: op,
+				lhs: new_lhs,
+			},
 			rhs: Rc::new(rhs),
 			parenthesized: false,
 		};
@@ -156,45 +157,47 @@ impl<'a> Parser<'a> {
 		Ok(true)
 	}
 
-	fn parse_unary_operator(&mut self) -> Option<(&'a str, Operator)> {
+	fn parse_unary_operator(&mut self) -> Option<(&'a str, UnaryOperator)> {
+		use self::UnaryOperator::*;
 		match self.source.as_bytes().get(0) {
-			Some(&b'+') => Some(Operator::UnaryPlus),
-			Some(&b'-') => Some(Operator::UnaryMinus),
-			Some(&b'!') => Some(Operator::Complement),
-			Some(&b'~') => Some(Operator::LogicalNot),
+			Some(&b'+') => Some(Plus),
+			Some(&b'-') => Some(Minus),
+			Some(&b'!') => Some(Complement),
+			Some(&b'~') => Some(LogicalNot),
 			_ => None,
 		}.map(|op| (self.source.consume_n(1), op))
 	}
 
-	fn parse_binary_operator(&mut self) -> Option<(&'a str, Operator)> {
+	fn parse_binary_operator(&mut self) -> Option<(&'a str, BinaryOperator)> {
+		use self::BinaryOperator::*;
 		let b: &[u8] = self.source.as_bytes();
 		match (
 			match b.get(0) { Some(&x) => x, None => 0 },
 			match b.get(1) { Some(&x) => x, None => 0 },
 		) {
-			(b'.',    _) => Some((1, Operator::Dot           )),
-			(b'[',    _) => Some((1, Operator::Index         )),
-			(b'(',    _) => Some((1, Operator::Call          )),
-			(b':',    _) => Some((1, Operator::Colon         )),
-			(b'*', b'*') => Some((2, Operator::Power         )),
-			(b'*',    _) => Some((1, Operator::Times         )),
-			(b'/',    _) => Some((1, Operator::Divide        )),
-			(b'%',    _) => Some((1, Operator::Modulo        )),
-			(b'+',    _) => Some((1, Operator::Plus          )),
-			(b'-',    _) => Some((1, Operator::Minus         )),
-			(b'<', b'=') => Some((2, Operator::LessOrEqual   )),
-			(b'<', b'<') => Some((2, Operator::LeftShift     )),
-			(b'<',    _) => Some((1, Operator::Less          )),
-			(b'>', b'=') => Some((2, Operator::GreaterOrEqual)),
-			(b'>', b'>') => Some((2, Operator::RightShift    )),
-			(b'>',    _) => Some((1, Operator::Greater       )),
-			(b'=', b'=') => Some((2, Operator::Equal         )),
-			(b'!', b'=') => Some((2, Operator::Inequal       )),
-			(b'&', b'&') => Some((2, Operator::LogicalAnd    )),
-			(b'&',    _) => Some((1, Operator::BitAnd        )),
-			(b'^',    _) => Some((1, Operator::BitXor        )),
-			(b'|', b'|') => Some((2, Operator::LogicalOr     )),
-			(b'|',    _) => Some((1, Operator::BitOr         )),
+			(b'.',    _) => Some((1, Dot           )),
+			(b'[',    _) => Some((1, Index         )),
+			(b'(',    _) => Some((1, Call          )),
+			(b':',    _) => Some((1, Colon         )),
+			(b'*', b'*') => Some((2, Power         )),
+			(b'*',    _) => Some((1, Times         )),
+			(b'/',    _) => Some((1, Divide        )),
+			(b'%',    _) => Some((1, Modulo        )),
+			(b'+',    _) => Some((1, Plus          )),
+			(b'-',    _) => Some((1, Minus         )),
+			(b'<', b'=') => Some((2, LessOrEqual   )),
+			(b'<', b'<') => Some((2, LeftShift     )),
+			(b'<',    _) => Some((1, Less          )),
+			(b'>', b'=') => Some((2, GreaterOrEqual)),
+			(b'>', b'>') => Some((2, RightShift    )),
+			(b'>',    _) => Some((1, Greater       )),
+			(b'=', b'=') => Some((2, Equal         )),
+			(b'!', b'=') => Some((2, Inequal       )),
+			(b'&', b'&') => Some((2, LogicalAnd    )),
+			(b'&',    _) => Some((1, BitAnd        )),
+			(b'^',    _) => Some((1, BitXor        )),
+			(b'|', b'|') => Some((2, LogicalOr     )),
+			(b'|',    _) => Some((1, BitOr         )),
 			_ => None,
 		}.map(|(n, op)| (self.source.consume_n(n), op))
 	}
@@ -211,17 +214,21 @@ impl<'a> Parser<'a> {
 
 }
 
-fn find_lhs<'a, 'b>(op: Operator, op_source: &'a str, mut expr: &'b mut Expression<'a>) -> Result<&'b mut Expression<'a>, Error<'a>> {
+fn find_lhs<'a, 'b>(
+	op: BinaryOperator,
+	op_source: &'a str,
+	mut expr: &'b mut Expression<'a>
+) -> Result<&'b mut Expression<'a>, Error<'a>> {
 	loop {
 		let current = expr;
 		match current {
-			&mut Expression::Operator{
-				op: e_op,
+			&mut Expression::Op{
+				op_and_lhs: ref e_op_and_lhs,
 				op_source: e_op_source,
 				rhs: ref mut e_rhs,
 				parenthesized: false,
 				..
-			} if !is_lhs(e_op, e_op_source, op, op_source)? => {
+			} if !is_lhs(e_op_and_lhs.op(), e_op_source, op, op_source)? => {
 				expr = Rc::get_mut(e_rhs).unwrap();
 			}
 			_ => return Ok(current)
@@ -229,13 +236,18 @@ fn find_lhs<'a, 'b>(op: Operator, op_source: &'a str, mut expr: &'b mut Expressi
 	}
 }
 
-fn is_lhs<'a>(left_op: Operator, left_op_source: &'a str, op: Operator, op_source: &'a str) -> Result<bool, Error<'a>> {
-	match higher_precedence(left_op, op) {
+fn is_lhs<'a>(
+	left_op: Operator,
+	left_op_source: &'a str,
+	op: BinaryOperator,
+	op_source: &'a str
+) -> Result<bool, Error<'a>> {
+	match higher_precedence(left_op, Operator::Binary(op)) {
 		Order::Left => Ok(true),
 		Order::Right => Ok(false),
 		Order::Unordered => Err(Error{
 			message: Message{
-				message: if op == left_op {
+				message: if Operator::Binary(op) == left_op {
 						format!("operator `{}' is non-associative", op_source)
 					} else {
 						format!("operator `{}' has equal precedence as `{}' and is non-associative", op_source, left_op_source)
