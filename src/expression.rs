@@ -2,6 +2,7 @@ use std::rc::Rc;
 
 use operator::*;
 
+#[derive(Debug)]
 pub enum Expression<'a> {
 	Identifier(&'a str),
 	Operator{
@@ -14,6 +15,7 @@ pub enum Expression<'a> {
 	Literal(Literal<'a>),
 }
 
+#[derive(Debug)]
 pub enum Literal<'a> {
 	Integer{ value: i64 },
 	Double{ value: f64 },
