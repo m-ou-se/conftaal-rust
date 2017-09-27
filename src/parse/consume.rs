@@ -46,39 +46,39 @@ impl<'a> Consume<'a> for &'a str {
 mod test {
 	use super::*;
 
-	static hello: &'static str = "hello";
+	static HELLO: &'static str = "hello";
 
 	#[test]
 	fn consume_n() {
-		let mut m: &'static str = hello;
+		let mut m: &'static str = HELLO;
 		let c: &'static str  = m.consume_n(3);
 		assert_eq!(c, "hel");
 		assert_eq!(m, "lo");
-		assert_eq!(c.as_ptr(), hello.as_ptr());
-		assert_eq!(m.as_ptr(), hello[3..].as_ptr());
+		assert_eq!(c.as_ptr(), HELLO.as_ptr());
+		assert_eq!(m.as_ptr(), HELLO[3..].as_ptr());
 	}
 
 	#[test]
 	fn consume() {
-		let mut m: &'static str = hello;
+		let mut m: &'static str = HELLO;
 		let c: Option<&'static str>  = m.consume("he");
 		assert_eq!(c, Some("he"));
-		assert_eq!(c.unwrap().as_ptr(), hello.as_ptr());
+		assert_eq!(c.unwrap().as_ptr(), HELLO.as_ptr());
 		assert_eq!(m.consume("xyz"), None);
 		assert_eq!(m, "llo");
-		assert_eq!(m.as_ptr(), hello[2..].as_ptr());
+		assert_eq!(m.as_ptr(), HELLO[2..].as_ptr());
 	}
 
 	#[test]
 	fn consume_if() {
-		let mut m: &'static str = hello;
+		let mut m: &'static str = HELLO;
 		let h = m.consume_if(|x| x == 'h');
 		let x = m.consume_if(|x| x == 'x');
 		assert_eq!(m, "ello");
 		assert_eq!(h, Some("h"));
 		assert_eq!(x, None);
-		assert_eq!(m.as_ptr(), hello[1..].as_ptr());
-		assert_eq!(h.unwrap().as_ptr(), hello.as_ptr());
+		assert_eq!(m.as_ptr(), HELLO[1..].as_ptr());
+		assert_eq!(h.unwrap().as_ptr(), HELLO.as_ptr());
 	}
 
 	#[test]
