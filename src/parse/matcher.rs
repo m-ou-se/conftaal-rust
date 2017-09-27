@@ -18,8 +18,12 @@ pub struct Matcher<'a> {
 
 impl<'a> Matcher<'a> {
 
-	pub fn new(m: MatchMode) -> Matcher {
+	pub fn new(m: MatchMode<'a>) -> Matcher<'a> {
 		Matcher{ mode: m, or_before: None }
+	}
+
+	pub fn bracket(left: &'a str, right: &'a str) -> Matcher<'a> {
+		Matcher{ mode: MatchingBracket(left, right), or_before: None }
 	}
 
 	// TODO: Just return a boolean?
@@ -42,7 +46,7 @@ impl<'a> Matcher<'a> {
 					return Some(&source[..]);
 				}
 			},
-			Specific(s) | MatchingBracket(s, _) => {
+			Specific(s) | MatchingBracket(_, s) => {
 				if let Some(m) = source.consume(s) {
 					return Some(m);
 				}
@@ -84,7 +88,7 @@ impl<'a> Matcher<'a> {
 		let mut desc = match self.mode {
 			Nothing => String::new(),
 			EndOfFile => "end of file".to_string(),
-			Specific(s) | MatchingBracket(s, _) => format!("`{}'", s),
+			Specific(s) | MatchingBracket(_, s) => format!("`{}'", s),
 			ElementEnd => "newline or `,` or `;'".to_string(),
 		};
 		if let Some(b) = self.or_before {
@@ -105,7 +109,7 @@ impl<'a> Matcher<'a> {
 				location: Some(&source[..0]),
 			},
 			notes: match (&self.mode, self.or_before) {
-				(&MatchingBracket(_, b), None) =>
+				(&MatchingBracket(b, _), None) =>
 					vec![Message{
 						message: format!("... to match this `{}'", b),
 						location: Some(b)

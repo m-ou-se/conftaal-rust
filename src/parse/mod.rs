@@ -13,7 +13,7 @@ use expression::*;
 use operator::{Operator,Order,higher_precedence};
 use self::consume::Consume;
 use self::error::{Error, Message};
-use self::matcher::*;
+use self::matcher::Matcher;
 
 pub struct Parser<'a> {
 	//string_tracker: StringTracker<'a>,
@@ -70,7 +70,7 @@ impl<'a> Parser<'a> {
 		if end.parse_end(&mut self.source)? { return Ok(None); }
 
 		if let Some(open) = self.source.consume("(") {
-			let mut expr = self.parse_expression(&Matcher::new(MatchingBracket(")", open)))?;
+			let mut expr = self.parse_expression(&Matcher::bracket(open, ")"))?;
 			if let &mut Expression::Operator{ref mut parenthesized, ..} = &mut expr {
 				*parenthesized = true;
 			}
@@ -124,8 +124,8 @@ impl<'a> Parser<'a> {
 		)?;
 
 		let rhs = match op {
-			Operator::Call  => self.parse_list(&Matcher::new(MatchingBracket(")", op_source))),
-			Operator::Index => self.parse_list(&Matcher::new(MatchingBracket("]", op_source))),
+			Operator::Call  => self.parse_list(&Matcher::bracket(op_source, ")")),
+			Operator::Index => self.parse_list(&Matcher::bracket(op_source, "]")),
 			Operator::Dot => {
 				self.parse_identifier().map(|ident|
 					Expression::Identifier(ident)
