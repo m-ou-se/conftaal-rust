@@ -120,7 +120,7 @@ impl<'a> Parser<'a> {
 		if end.parse_end(&mut self.source)? { return Ok(false); }
 
 		let (op_source, op) = self.parse_binary_operator().ok_or_else(||
-			error(&self.source[..0], format!("expected binary operator or {}", "TODO end.description()"))
+			error(&self.source[..0], format!("expected binary operator or {}", end.description()))
 		)?;
 
 		let rhs = match op {
