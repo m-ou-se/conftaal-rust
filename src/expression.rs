@@ -25,4 +25,3 @@ pub enum Literal<'a> {
 		values: Vec<Rc<Expression<'a>>>,
 	},
 }
-
