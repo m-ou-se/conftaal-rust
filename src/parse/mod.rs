@@ -1,7 +1,7 @@
 mod consume;
 mod error;
 mod hex;
-mod matcher;
+pub mod matcher; // TODO: make private
 
 use std::mem;
 use std::rc::Rc;
@@ -12,23 +12,27 @@ use self::stringpool::stringtracker::StringTracker;
 use expression::*;
 use operator::{Operator,Order,higher_precedence};
 use self::consume::Consume;
+use self::error::{Error, Message};
 use self::matcher::*;
 
-struct Parser<'a> {
-	string_tracker: StringTracker<'a>,
-	source: &'a str,
+pub struct Parser<'a> {
+	//string_tracker: StringTracker<'a>,
+	pub source: &'a str,
+}
+
+fn error<'a>(location: &'a str, message: String) -> Error<'a> {
+	Error{
+		message: Message{
+			message: message,
+			location: Some(location),
+		},
+		notes: vec![],
+	}
 }
 
 impl<'a> Parser<'a> {
-	pub fn parse_expression(&mut self /*, end */) -> Result<Expression<'a>, ()> {
-		let mut expr = self.parse_expression_atom(/* end */)?.ok_or_else(||
-			() // TODO: Missing expression
-		)?;
-		while self.parse_more_expression(&mut expr)? {}
-		Ok(expr)
-	}
 
-	pub fn parse_list(&mut self /*, end */) -> Expression<'a> {
+	pub fn parse_list(&mut self, end: &Matcher<'a>) -> Expression<'a> {
 		unimplemented!();
 	}
 
@@ -53,20 +57,28 @@ impl<'a> Parser<'a> {
 		}
 	}
 
-//private:
-	fn parse_expression_atom(&mut self /*, end */) -> Result<Option<Expression<'a>>, ()> {
-		//TODO: if parse_end(..) return None
+	pub fn parse_expression(&mut self, end: &Matcher<'a>) -> Result<Expression<'a>, Error<'a>> {
+		let mut expr = self.parse_expression_atom(end)?.ok_or_else(||
+			error(&self.source[..0], "missing expression".to_string())
+		)?;
+		while self.parse_more_expression(&mut expr, end)? {}
+		Ok(expr)
+	}
+
+	fn parse_expression_atom(&mut self, end: &Matcher<'a>) -> Result<Option<Expression<'a>>, Error<'a>> {
+
+		if end.parse_end(&mut self.source)? { return Ok(None); }
 
 		if let Some(open) = self.source.consume("(") {
-			let mut expr = self.parse_expression(/*Matcher(MatchMode::MatchingBracket, ")", open)*/)?;
+			let mut expr = self.parse_expression(&Matcher::new(MatchingBracket(")", open)))?;
 			if let &mut Expression::Operator{ref mut parenthesized, ..} = &mut expr {
 				*parenthesized = true;
 			}
 			Ok(Some(expr))
 
 		} else if let Some((op_source, op)) = self.parse_unary_operator() {
-			match self.parse_expression_atom(/* end */)? {
-				None => Err(()), // TODO: "missing expression after unary `{}' operator"
+			match self.parse_expression_atom(end)? {
+				None => Err(error(&self.source[..0], format!("missing expression after unary `{}' operator", op_source))),
 				Some(subexpr) => Ok(Some(Expression::Operator{
 					op: op,
 					op_source: op_source,
@@ -103,32 +115,32 @@ impl<'a> Parser<'a> {
 		}
 	}
 
-	fn parse_more_expression(&mut self, expr: &mut Expression<'a> /*, end*/) -> Result<bool, ()> {
-		// TODO: if parse end, return false
+	fn parse_more_expression(&mut self, expr: &mut Expression<'a>, end: &Matcher<'a>) -> Result<bool, Error<'a>> {
+
+		if end.parse_end(&mut self.source)? { return Ok(false); }
 
 		let (op_source, op) = self.parse_binary_operator().ok_or_else(||
-			() // TODO: Expected binary operator or end.description()
+			error(&self.source[..0], format!("expected binary operator or {}", "TODO end.description()"))
 		)?;
 
 		let rhs = match op {
-			Operator::Index | Operator::Call => {
-				self.parse_list(/* TODO: end */)
-			},
+			Operator::Call  => self.parse_list(&Matcher::new(MatchingBracket(")", op_source))),
+			Operator::Index => self.parse_list(&Matcher::new(MatchingBracket("]", op_source))),
 			Operator::Dot => {
 				self.parse_identifier().map(|ident|
 					Expression::Identifier(ident)
 				).ok_or_else(||
-					() // TODO: expected identifier after .
+					error(&self.source[..0], "expected identifier after `.'".to_string())
 				)?
 			},
 			_ => {
-				self.parse_expression_atom(/* end */)?.ok_or_else(||
-					() // TODO: missing expression after binop
+				self.parse_expression_atom(end)?.ok_or_else(||
+					error(&self.source[..0], format!("expected expression after binary operator `{}'", op_source))
 				)?
 			},
 		};
 
-		let old_lhs: &mut Expression<'a> = find_lhs(op, expr)?;
+		let old_lhs: &mut Expression<'a> = find_lhs(op, op_source, expr)?;
 
 		// Use a dummy value of Identifier("") while we swap the nodes around.
 		let new_lhs = Rc::new(mem::replace(old_lhs, Expression::Identifier("")));
@@ -199,22 +211,41 @@ impl<'a> Parser<'a> {
 
 }
 
-fn find_lhs<'a, 'b>(op: Operator, expr: &'b mut Expression<'a>) -> Result<&'b mut Expression<'a>, ()> {
-	match expr {
-		&mut Expression::Operator{
-			op: e_op,
-			rhs: ref mut e_rhs,
-			parenthesized: false,
-			..
-		} if match higher_precedence(e_op, op) {
-			Order::Left => false,
-			Order::Right => true,
-			Order::Unordered => {
-				return Err(()); // TODO:
-				// Operator X [has equal precedence as Y and ]is non-associative
-				// Note: Conflicting Y here
+fn find_lhs<'a, 'b>(op: Operator, op_source: &'a str, mut expr: &'b mut Expression<'a>) -> Result<&'b mut Expression<'a>, Error<'a>> {
+	loop {
+		let current = expr;
+		match current {
+			&mut Expression::Operator{
+				op: e_op,
+				op_source: e_op_source,
+				rhs: ref mut e_rhs,
+				parenthesized: false,
+				..
+			} if !is_lhs(e_op, e_op_source, op, op_source)? => {
+				expr = Rc::get_mut(e_rhs).unwrap();
+			}
+			_ => return Ok(current)
+		}
+	}
+}
+
+fn is_lhs<'a>(left_op: Operator, left_op_source: &'a str, op: Operator, op_source: &'a str) -> Result<bool, Error<'a>> {
+	match higher_precedence(left_op, op) {
+		Order::Left => Ok(true),
+		Order::Right => Ok(false),
+		Order::Unordered => Err(Error{
+			message: Message{
+				message: if op == left_op {
+						format!("operator `{}' is non-associative", op_source)
+					} else {
+						format!("operator `{}' has equal precedence as `{}' and is non-associative", op_source, left_op_source)
+					},
+				location: Some(op_source),
 			},
-		} => find_lhs(op, Rc::get_mut(e_rhs).unwrap()),
-		_ => Ok(expr),
+			notes: vec![Message{
+				message: format!("conflicting `{}' here", left_op_source),
+				location: Some(left_op_source),
+			}],
+		})
 	}
 }
