@@ -2,6 +2,7 @@ use super::error::{Error, Message};
 use super::consume::Consume;
 
 pub enum MatchMode<'a> {
+	Nothing,
 	EndOfFile,
 	Specific(&'a str),
 	MatchingBracket(&'a str, &'a str),
@@ -16,7 +17,13 @@ pub struct Matcher<'a> {
 }
 
 impl<'a> Matcher<'a> {
-	pub fn try_parse<'b>(
+
+	pub fn new(m: MatchMode) -> Matcher {
+		Matcher{ mode: m, or_before: None }
+	}
+
+	// TODO: Just return a boolean?
+	fn try_parse<'b>(
 		&self,
 		source: &mut &'b str,
 		eat_whitespace: bool
@@ -29,6 +36,7 @@ impl<'a> Matcher<'a> {
 			skip_whitespace(source, skip_newlines);
 		}
 		match self.mode {
+			Nothing => (),
 			EndOfFile => {
 				if source.is_empty() {
 					return Some(&source[..]);
@@ -54,22 +62,38 @@ impl<'a> Matcher<'a> {
 		None
 	}
 
-	pub fn parse<'b: 'a>(
+	fn parse<'b: 'a>(
 		&self,
 		source: &mut &'b str
 	) -> Result<&'b str, Error<'a>> {
 		self.try_parse(source, true).ok_or_else(|| self.error(source))
 	}
 
+	pub fn parse_end(
+		&self,
+		source: &mut &'a str
+	) -> Result<bool, Error<'a>> {
+		match self.try_parse(source, true) {
+			None if source.is_empty() => Err(self.error(*source)),
+			None => Ok(false),
+			Some(_) => Ok(true),
+		}
+	}
+
 	pub fn description(&self) -> String {
 		let mut desc = match self.mode {
+			Nothing => String::new(),
 			EndOfFile => "end of file".to_string(),
 			Specific(s) | MatchingBracket(s, _) => format!("`{}'", s),
 			ElementEnd => "newline or `,` or `;'".to_string(),
 		};
 		if let Some(b) = self.or_before {
-			desc.push_str(" or ");
-			desc.push_str(&b.description());
+			if desc.is_empty() {
+				desc = b.description();
+			} else {
+				desc.push_str(" or ");
+				desc.push_str(&b.description());
+			}
 		}
 		desc
 	}
