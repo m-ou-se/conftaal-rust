@@ -35,29 +35,23 @@ impl<'a> End<'a> {
 	}
 
 	fn error(&self, source: &'a str) -> Error<'a> {
-		Error{
-			message: Message{
-				message: format!("expected {}", self.description()),
-				location: Some(&source[..0]),
-			},
-			notes: match self {
-				&End::MatchingBracket(b, _) => vec![Message{
-					message: format!("... to match this `{}'", b),
-					location: Some(b)
-				}],
-				_ => vec![],
-			},
+		let mut e = error(&source[..0], format!("expected {}", self.description()));
+		if let &End::MatchingBracket(b, _) = self {
+			e.notes = vec![Message{
+				message: format!("... to match this `{}'", b),
+				location: Some(b)
+			}];
 		}
+		e
 	}
 
 	pub fn parse(&self, source: &mut &'a str) -> Result<bool, Error<'a>> {
 		skip_whitespace(source, match self { &End::ElementEnd => false, _ => true });
-		// TODO: rewrite
-		let matches = self.consume(source);
-		if !matches && source.is_empty() {
+		let did_match = self.consume(source);
+		if !did_match && source.is_empty() {
 			Err(self.error(*source))
 		} else {
-			Ok(matches)
+			Ok(did_match)
 		}
 	}
 
@@ -79,11 +73,11 @@ impl<'a> OptionalEnd<'a> {
 
 	pub fn parse(&self, source: &mut &'a str) -> Result<bool, Error<'a>> {
 		skip_whitespace(source, match self.end { End::ElementEnd => false, _ => true });
-		let matches = self.end.consume(source) || self.or_before.map(|e| e.matches(*source)).unwrap_or(false);
-		if !matches && source.is_empty() {
+		let did_match = self.end.consume(source) || self.or_before.map(|e| e.matches(*source)).unwrap_or(false);
+		if !did_match && source.is_empty() {
 			Err(self.error(*source))
 		} else {
-			Ok(matches)
+			Ok(did_match)
 		}
 	}
 
