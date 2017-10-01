@@ -1,5 +1,5 @@
 use super::consume::Consume;
-use super::error::{Error, Message};
+use super::error::{Error, Message, error};
 use super::whitespace::skip_whitespace;
 
 pub enum MatchMode<'a> {

@@ -12,22 +12,12 @@ use self::stringpool::stringtracker::StringTracker;
 use expression::{Expression,OpAndLhs,Literal};
 use operator::{UnaryOperator,BinaryOperator,Operator,Order,higher_precedence};
 use self::consume::Consume;
-use self::error::{Error, Message};
+use self::error::{Error, Message, error};
 use self::matcher::Matcher;
 
 pub struct Parser<'a> {
 	//string_tracker: StringTracker<'a>,
 	pub source: &'a str,
-}
-
-fn error<'a>(location: &'a str, message: String) -> Error<'a> {
-	Error{
-		message: Message{
-			message: message,
-			location: Some(location),
-		},
-		notes: vec![],
-	}
 }
 
 impl<'a> Parser<'a> {
