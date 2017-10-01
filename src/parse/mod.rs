@@ -1,7 +1,7 @@
 mod consume;
 mod error;
 mod whitespace;
-pub mod matcher; // TODO: make private
+pub mod end; // TODO: make private
 
 use std::mem;
 use std::rc::Rc;
@@ -12,8 +12,8 @@ use self::stringpool::stringtracker::StringTracker;
 use expression::{Expression,OpAndLhs,Literal};
 use operator::{UnaryOperator,BinaryOperator,Operator,Order,higher_precedence};
 use self::consume::Consume;
+use self::end::{End, OptionalEnd};
 use self::error::{Error, Message, error};
-use self::matcher::{End, OptionalEnd};
 use self::whitespace::skip_whitespace;
 
 pub struct Parser<'a> {

@@ -2,7 +2,7 @@ extern crate conftaal;
 
 use conftaal::expression::{Expression,OpAndLhs,Literal};
 use conftaal::parse::Parser;
-use conftaal::parse::matcher::End;
+use conftaal::parse::end::End;
 
 fn reconstruct(e: &Expression) -> String {
 	use Expression::*;
