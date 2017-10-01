@@ -44,7 +44,7 @@ fn reconstruct(e: &Expression) -> String {
 
 fn main() {
 	let mut p = Parser{
-		source: "a[x, (w>a)(a, b+c), z + q]" //"a * (-a.bla + b)"
+		source: "bla_0[x, f(a, b+c), [a, b] + {a = ~b, c = a+b+c; x = y; y = -x;}]"
 	};
 
 	println!("Parsing: {}", p.source);
