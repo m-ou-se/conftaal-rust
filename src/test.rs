@@ -51,9 +51,9 @@ fn main() {
 
 	match p.parse_expression(&End::EndOfFile.as_optional()) {
 		Ok(expr) => {
-			println!("Result: {:?}", expr);
+			println!("Result: {:#?}", expr);
 			println!("Reconstucted: {}", reconstruct(&expr));
 		},
-		Err(e) => println!("Error: {:?}", e),
+		Err(e) => println!("Error: {:#?}", e),
 	}
 }
