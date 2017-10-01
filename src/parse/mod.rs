@@ -14,6 +14,7 @@ use operator::{UnaryOperator,BinaryOperator,Operator,Order,higher_precedence};
 use self::consume::Consume;
 use self::error::{Error, Message, error};
 use self::matcher::{End, OptionalEnd};
+use self::whitespace::skip_whitespace;
 
 pub struct Parser<'a> {
 	//string_tracker: StringTracker<'a>,
@@ -31,8 +32,25 @@ impl<'a> Parser<'a> {
 		}
 	}
 
-	pub fn parse_object(&mut self /*, end */) -> Expression<'a> {
-		unimplemented!();
+	pub fn parse_object(&mut self, end: &End<'a>)
+		-> Result<(Vec<Rc<Expression<'a>>>, Vec<Rc<Expression<'a>>>), Error<'a>>
+	{
+		let mut keys = Vec::new();
+		let mut values = Vec::new();
+		let element_end = End::ElementEnd.or_before(*end);
+		loop {
+			if end.parse(&mut self.source)? { return Ok((keys, values)); }
+			let key = self.parse_identifier().ok_or_else(||
+				error(&self.source[..0], "expected identifier as object key".to_string())
+			)?;
+			skip_whitespace(&mut self.source, false);
+			self.source.consume("=").ok_or_else(||
+				error(&self.source[..0], "expected `='".to_string())
+			)?;
+			let value = self.parse_expression(&element_end)?;
+			keys.push(Rc::new(Expression::Identifier(key)));
+			values.push(Rc::new(value));
+		}
 	}
 
 	pub fn parse_identifier(&mut self) -> Option<&'a str> {
@@ -90,8 +108,8 @@ impl<'a> Parser<'a> {
 			unimplemented!();
 
 		} else if let Some(open) = self.source.consume("{") {
-			// TODO: parse object
-			unimplemented!();
+			let (keys, values) = self.parse_object(&End::MatchingBracket(open, "}"))?;
+			Ok(Some(Expression::Literal(Literal::Object(keys, values))))
 
 		} else if let Some(open) = self.source.consume("[") {
 			let list = self.parse_list(&End::MatchingBracket(open, "]"))?;

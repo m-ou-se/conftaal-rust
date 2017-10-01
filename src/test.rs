@@ -27,6 +27,17 @@ fn reconstruct(e: &Expression) -> String {
 			s += ")";
 			s
 		}
+		Literal(Object(ref keys, ref values)) => {
+			let mut s = "object(".to_string();
+			for (i, (k, v)) in keys.iter().zip(values.iter()).enumerate() {
+				if i > 0 { s += ", "; }
+				s += &reconstruct(k)[..];
+				s += " = ";
+				s += &reconstruct(v)[..];
+			}
+			s += ")";
+			s
+		}
 		Literal(_) => "<some literal>".to_string(),
 	}
 }
