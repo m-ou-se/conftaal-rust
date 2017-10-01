@@ -90,7 +90,7 @@ impl<'a> OptionalEnd<'a> {
 	pub fn description(&self) -> String {
 		let mut desc = self.end.description();
 		if let Some(e) = self.or_before {
-			write!(&mut desc, " or {}", e.description());
+			write!(&mut desc, " or {}", e.description()).unwrap();
 		}
 		desc
 	}
