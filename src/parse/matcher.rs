@@ -1,134 +1,106 @@
+use std::fmt::Write;
+
 use super::consume::Consume;
 use super::error::{Error, Message, error};
 use super::whitespace::skip_whitespace;
 
-pub enum MatchMode<'a> {
-	Nothing,
+#[derive(Clone, Copy)]
+pub enum End<'a> {
 	EndOfFile,
 	Specific(&'static str),
 	MatchingBracket(&'a str, &'static str),
 	ElementEnd, // , or ; or \n
 }
 
-pub use self::MatchMode::*;
+impl<'a> End<'a> {
 
-pub struct Matcher<'a: 'b, 'b> {
-	pub mode: MatchMode<'a>,
-	pub or_before: Option<&'b Matcher<'a, 'b>>
-}
-
-impl<'a, 'b> Matcher<'a, 'b> {
-
-	pub fn new(m: MatchMode<'a>) -> Self {
-		Matcher{ mode: m, or_before: None }
-	}
-
-	pub fn specific(s: &'static str) -> Self {
-		Matcher{ mode: Specific(s), or_before: None }
-	}
-
-	pub fn bracket(left: &'a str, right: &'static str) -> Self {
-		Matcher{ mode: MatchingBracket(left, right), or_before: None }
-	}
-
-	// TODO: Just return a boolean?
-	fn try_parse<'c>(
-		&self,
-		source: &mut &'c str,
-		eat_whitespace: bool
-	) -> Option<&'c str> {
-		if eat_whitespace {
-			let skip_newlines = match self.mode {
-				ElementEnd => false,
-				_          => true,
-			};
-			skip_whitespace(source, skip_newlines);
+	fn consume(&self, source: &mut &str) -> bool {
+		match self {
+			&End::EndOfFile => source.is_empty(),
+			&End::Specific(s) | &End::MatchingBracket(_, s) => source.consume(s).is_some(),
+			&End::ElementEnd => source.consume_if(|x| x == ',' || x == ';' || x == '\n').is_some(),
 		}
-		match self.mode {
-			Nothing => (),
-			EndOfFile => {
-				if source.is_empty() {
-					return Some(&source[..]);
-				}
-			},
-			Specific(s) | MatchingBracket(_, s) => {
-				if let Some(m) = source.consume(s) {
-					return Some(m);
-				}
-			},
-			ElementEnd => {
-				if let Some(m) = source.consume_if(|x| x == ',' || x == ';' || x == '\n') {
-					return Some(m);
-				}
-			}
-		}
-		if let Some(b) = self.or_before {
-			let mut s: &str = *source;
-			if let Some(m) = b.try_parse(&mut s, false) {
-				return Some(&m[..0]);
-			}
-		}
-		None
 	}
 
-	fn parse<'c: 'a>(
-		&self,
-		source: &mut &'c str
-	) -> Result<&'c str, Error<'a>> {
-		self.try_parse(source, true).ok_or_else(|| self.error(source))
-	}
-
-	pub fn parse_end(
-		&self,
-		source: &mut &'a str
-	) -> Result<bool, Error<'a>> {
-		match self.try_parse(source, true) {
-			None if source.is_empty() => Err(self.error(*source)),
-			None => Ok(false),
-			Some(_) => Ok(true),
-		}
+	fn matches(&self, mut source: &str) -> bool {
+		self.consume(&mut source)
 	}
 
 	pub fn description(&self) -> String {
-		let mut desc = match self.mode {
-			Nothing => String::new(),
-			EndOfFile => "end of file".to_string(),
-			Specific(s) | MatchingBracket(_, s) => format!("`{}'", s),
-			ElementEnd => "newline or `,` or `;'".to_string(),
-		};
-		if let Some(b) = self.or_before {
-			if desc.is_empty() {
-				desc = b.description();
-			} else {
-				desc.push_str(" or ");
-				desc.push_str(&b.description());
-			}
+		match self {
+			&End::EndOfFile => "end of file".to_string(),
+			&End::Specific(s) | &End::MatchingBracket(_, s) => format!("`{}'", s),
+			&End::ElementEnd => "newline or `,` or `;'".to_string(),
 		}
-		desc
 	}
 
-	pub fn error(&self, source: &'a str) -> Error<'a> {
+	fn error(&self, source: &'a str) -> Error<'a> {
 		Error{
 			message: Message{
-				message: self.description(),
+				message: format!("expected {}", self.description()),
 				location: Some(&source[..0]),
 			},
-			notes: match (&self.mode, self.or_before) {
-				(&MatchingBracket(b, _), None) =>
-					vec![Message{
-						message: format!("... to match this `{}'", b),
-						location: Some(b)
-					}],
+			notes: match self {
+				&End::MatchingBracket(b, _) => vec![Message{
+					message: format!("... to match this `{}'", b),
+					location: Some(b)
+				}],
 				_ => vec![],
 			},
 		}
 	}
 
-	pub fn or_before(mut self, or_before: &'b Matcher<'a, 'b>) -> Self {
-		assert!(self.or_before.is_none());
-		self.or_before = Some(or_before);
-		self
+	pub fn parse(&self, source: &mut &'a str) -> Result<bool, Error<'a>> {
+		skip_whitespace(source, match self { &End::ElementEnd => false, _ => true });
+		// TODO: rewrite
+		let matches = self.consume(source);
+		if !matches && source.is_empty() {
+			Err(self.error(*source))
+		} else {
+			Ok(matches)
+		}
+	}
+
+	pub fn or_before(self, or_before: Self) -> OptionalEnd<'a> {
+		OptionalEnd{ end: self, or_before: Some(or_before) }
+	}
+
+	pub fn as_optional(self) -> OptionalEnd<'a> {
+		OptionalEnd{ end: self, or_before: None }
 	}
 }
 
-//TODO: Add tests for Matcher.
+pub struct OptionalEnd<'a> {
+	pub end: End<'a>,
+	pub or_before: Option<End<'a>>,
+}
+
+impl<'a> OptionalEnd<'a> {
+
+	pub fn parse(&self, source: &mut &'a str) -> Result<bool, Error<'a>> {
+		skip_whitespace(source, match self.end { End::ElementEnd => false, _ => true });
+		let matches = self.end.consume(source) || self.or_before.map(|e| e.matches(*source)).unwrap_or(false);
+		if !matches && source.is_empty() {
+			Err(self.error(*source))
+		} else {
+			Ok(matches)
+		}
+	}
+
+	pub fn description(&self) -> String {
+		let mut desc = self.end.description();
+		if let Some(e) = self.or_before {
+			write!(&mut desc, " or {}", e.description());
+		}
+		desc
+	}
+
+	fn error(&self, source: &'a str) -> Error<'a> {
+		match self.or_before {
+			None => self.end.error(source),
+			Some(_) => error(&source[..0], format!("expected {}", self.description())),
+		}
+	}
+}
+
+//TODO: Add tests.

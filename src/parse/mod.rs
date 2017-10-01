@@ -13,7 +13,7 @@ use expression::{Expression,OpAndLhs,Literal};
 use operator::{UnaryOperator,BinaryOperator,Operator,Order,higher_precedence};
 use self::consume::Consume;
 use self::error::{Error, Message, error};
-use self::matcher::Matcher;
+use self::matcher::{End, OptionalEnd};
 
 pub struct Parser<'a> {
 	//string_tracker: StringTracker<'a>,
@@ -22,11 +22,12 @@ pub struct Parser<'a> {
 
 impl<'a> Parser<'a> {
 
-	pub fn parse_list<'b>(&mut self, end: &Matcher<'a, 'b>) -> Result<Vec<Rc<Expression<'a>>>, Error<'a>> {
+	pub fn parse_list(&mut self, end: &End<'a>) -> Result<Vec<Rc<Expression<'a>>>, Error<'a>> {
 		let mut elements = Vec::new();
+		let element_end = End::Specific(",").or_before(*end);
 		loop {
-			if end.parse_end(&mut self.source)? { return Ok(elements); }
-			elements.push(Rc::new(self.parse_expression(&Matcher::specific(",").or_before(&end))?));
+			if end.parse(&mut self.source)? { return Ok(elements); }
+			elements.push(Rc::new(self.parse_expression(&element_end)?));
 		}
 	}
 
@@ -51,7 +52,7 @@ impl<'a> Parser<'a> {
 		}
 	}
 
-	pub fn parse_expression<'b>(&mut self, end: &Matcher<'a, 'b>) -> Result<Expression<'a>, Error<'a>> {
+	pub fn parse_expression(&mut self, end: &OptionalEnd<'a>) -> Result<Expression<'a>, Error<'a>> {
 		let mut expr = self.parse_expression_atom(end)?.ok_or_else(||
 			error(&self.source[..0], "missing expression".to_string())
 		)?;
@@ -59,12 +60,12 @@ impl<'a> Parser<'a> {
 		Ok(expr)
 	}
 
-	fn parse_expression_atom<'b>(&mut self, end: &Matcher<'a, 'b>) -> Result<Option<Expression<'a>>, Error<'a>> {
+	fn parse_expression_atom<'b>(&mut self, end: &OptionalEnd<'a>) -> Result<Option<Expression<'a>>, Error<'a>> {
 
-		if end.parse_end(&mut self.source)? { return Ok(None); }
+		if end.parse(&mut self.source)? { return Ok(None); }
 
 		if let Some(open) = self.source.consume("(") {
-			let mut expr = self.parse_expression(&Matcher::bracket(open, ")"))?;
+			let mut expr = self.parse_expression(&End::MatchingBracket(open, ")").as_optional())?;
 			if let &mut Expression::Op{ref mut parenthesized, ..} = &mut expr {
 				*parenthesized = true;
 			}
@@ -108,17 +109,17 @@ impl<'a> Parser<'a> {
 		}
 	}
 
-	fn parse_more_expression<'b>(&mut self, expr: &mut Expression<'a>, end: &Matcher<'a, 'b>) -> Result<bool, Error<'a>> {
+	fn parse_more_expression(&mut self, expr: &mut Expression<'a>, end: &OptionalEnd<'a>) -> Result<bool, Error<'a>> {
 
-		if end.parse_end(&mut self.source)? { return Ok(false); }
+		if end.parse(&mut self.source)? { return Ok(false); }
 
 		let (op_source, op) = self.parse_binary_operator().ok_or_else(||
 			error(&self.source[..0], format!("expected binary operator or {}", end.description()))
 		)?;
 
 		let rhs = match op {
-			BinaryOperator::Call  => Expression::Literal(Literal::List{elements: self.parse_list(&Matcher::bracket(op_source, ")"))?}),
-			BinaryOperator::Index => Expression::Literal(Literal::List{elements: self.parse_list(&Matcher::bracket(op_source, "]"))?}),
+			BinaryOperator::Call  => Expression::Literal(Literal::List{elements: self.parse_list(&End::MatchingBracket(op_source, ")"))?}),
+			BinaryOperator::Index => Expression::Literal(Literal::List{elements: self.parse_list(&End::MatchingBracket(op_source, "]"))?}),
 			BinaryOperator::Dot => {
 				self.parse_identifier().map(|ident|
 					Expression::Identifier(ident)

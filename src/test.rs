@@ -2,7 +2,7 @@ extern crate conftaal;
 
 use conftaal::expression::{Expression,OpAndLhs,Literal};
 use conftaal::parse::Parser;
-use conftaal::parse::matcher::{Matcher, MatchMode};
+use conftaal::parse::matcher::End;
 
 fn reconstruct(e: &Expression) -> String {
 	use Expression::*;
@@ -38,7 +38,7 @@ fn main() {
 
 	println!("Parsing: {}", p.source);
 
-	match p.parse_expression(&Matcher::new(MatchMode::EndOfFile)) {
+	match p.parse_expression(&End::EndOfFile.as_optional()) {
 		Ok(expr) => {
 			println!("Result: {:?}", expr);
 			println!("Reconstucted: {}", reconstruct(&expr));
