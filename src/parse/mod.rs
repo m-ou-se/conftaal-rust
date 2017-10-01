@@ -1,6 +1,5 @@
 mod consume;
 mod error;
-mod hex;
 mod whitespace;
 pub mod matcher; // TODO: make private
 
