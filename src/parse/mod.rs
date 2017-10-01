@@ -94,8 +94,8 @@ impl<'a> Parser<'a> {
 			unimplemented!();
 
 		} else if let Some(open) = self.source.consume("[") {
-			// TODO: parse list
-			unimplemented!();
+			let list = self.parse_list(&End::MatchingBracket(open, "]"))?;
+			Ok(Some(Expression::Literal(Literal::List(list))))
 
 		} else if let Some(number) = self.parse_number() {
 			Ok(Some(Expression::Literal(number)))
