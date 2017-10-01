@@ -18,7 +18,7 @@ fn reconstruct(e: &Expression) -> String {
 			if parenthesized { s = format!("({})", s); }
 			s
 		},
-		Literal(List{ref elements}) => {
+		Literal(List(ref elements)) => {
 			let mut s = "list(".to_string();
 			for (i, e) in elements.iter().enumerate() {
 				if i > 0 { s += ", "; }

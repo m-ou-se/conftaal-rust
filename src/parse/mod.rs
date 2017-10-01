@@ -118,8 +118,8 @@ impl<'a> Parser<'a> {
 		)?;
 
 		let rhs = match op {
-			BinaryOperator::Call  => Expression::Literal(Literal::List{elements: self.parse_list(&End::MatchingBracket(op_source, ")"))?}),
-			BinaryOperator::Index => Expression::Literal(Literal::List{elements: self.parse_list(&End::MatchingBracket(op_source, "]"))?}),
+			BinaryOperator::Call  => Expression::Literal(Literal::List(self.parse_list(&End::MatchingBracket(op_source, ")"))?)),
+			BinaryOperator::Index => Expression::Literal(Literal::List(self.parse_list(&End::MatchingBracket(op_source, "]"))?)),
 			BinaryOperator::Dot => {
 				self.parse_identifier().map(|ident|
 					Expression::Identifier(ident)

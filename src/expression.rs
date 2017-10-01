@@ -36,13 +36,9 @@ impl<'a> OpAndLhs<'a> {
 
 #[derive(Debug)]
 pub enum Literal<'a> {
-	Integer{ value: i64 },
-	Double{ value: f64 },
-	String{ value: &'a str },
-	List{ elements: Vec<Rc<Expression<'a>>> },
-	Object{
-		// TODO: Should be ListLiteralExpressions
-		keys: Vec<Rc<Expression<'a>>>,
-		values: Vec<Rc<Expression<'a>>>,
-	},
+	Integer(i64),
+	Double(f64),
+	String(&'a str),
+	List(Vec<Rc<Expression<'a>>>),
+	Object(Vec<Rc<Expression<'a>>>, Vec<Rc<Expression<'a>>>),
 }
