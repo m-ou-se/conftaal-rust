@@ -165,46 +165,51 @@ impl<'a> Parser<'a> {
 
 	fn parse_unary_operator(&mut self) -> Option<(&'a str, UnaryOperator)> {
 		use self::UnaryOperator::*;
-		match self.source.first().unwrap_or(&0u8) {
-			&b'+' => Some(Plus),
-			&b'-' => Some(Minus),
-			&b'!' => Some(Complement),
-			&b'~' => Some(LogicalNot),
+		self.source.first().and_then(|x| match *x {
+			b'+' => Some(Plus),
+			b'-' => Some(Minus),
+			b'!' => Some(Complement),
+			b'~' => Some(LogicalNot),
 			_ => None,
-		}.map(|op| (unsafe { self.source.consume_str_n(1) }, op))
+		}).map(|op| (unsafe { self.source.consume_str_n(1) }, op))
 	}
 
 	fn parse_binary_operator(&mut self) -> Option<(&'a str, BinaryOperator)> {
 		use self::BinaryOperator::*;
-		match (
-			self.source.get(0).unwrap_or(&0u8),
-			self.source.get(1).unwrap_or(&0u8)
-		) {
-			(&b'.',     _) => Some((1, Dot           )),
-			(&b'[',     _) => Some((1, Index         )),
-			(&b'(',     _) => Some((1, Call          )),
-			(&b':',     _) => Some((1, Colon         )),
-			(&b'*', &b'*') => Some((2, Power         )),
-			(&b'*',     _) => Some((1, Times         )),
-			(&b'/',     _) => Some((1, Divide        )),
-			(&b'%',     _) => Some((1, Modulo        )),
-			(&b'+',     _) => Some((1, Plus          )),
-			(&b'-',     _) => Some((1, Minus         )),
-			(&b'<', &b'=') => Some((2, LessOrEqual   )),
-			(&b'<', &b'<') => Some((2, LeftShift     )),
-			(&b'<',     _) => Some((1, Less          )),
-			(&b'>', &b'=') => Some((2, GreaterOrEqual)),
-			(&b'>', &b'>') => Some((2, RightShift    )),
-			(&b'>',     _) => Some((1, Greater       )),
-			(&b'=', &b'=') => Some((2, Equal         )),
-			(&b'!', &b'=') => Some((2, Inequal       )),
-			(&b'&', &b'&') => Some((2, LogicalAnd    )),
-			(&b'&',     _) => Some((1, BitAnd        )),
-			(&b'^',     _) => Some((1, BitXor        )),
-			(&b'|', &b'|') => Some((2, LogicalOr     )),
-			(&b'|',     _) => Some((1, BitOr         )),
+		if let Some(op) = self.source.get(0..2).and_then(|x| match x {
+			b"**" => Some(Power         ),
+			b"<=" => Some(LessOrEqual   ),
+			b"<<" => Some(LeftShift     ),
+			b">=" => Some(GreaterOrEqual),
+			b">>" => Some(RightShift    ),
+			b"==" => Some(Equal         ),
+			b"!=" => Some(Inequal       ),
+			b"&&" => Some(LogicalAnd    ),
+			b"||" => Some(LogicalOr     ),
 			_ => None,
-		}.map(|(n, op)| (unsafe { self.source.consume_str_n(n) }, op))
+		}) {
+			return Some((unsafe { self.source.consume_str_n(2) }, op));
+		}
+		if let Some(op) = self.source.get(0).and_then(|x| match *x {
+			b'.' => Some(Dot    ),
+			b'[' => Some(Index  ),
+			b'(' => Some(Call   ),
+			b':' => Some(Colon  ),
+			b'*' => Some(Times  ),
+			b'/' => Some(Divide ),
+			b'%' => Some(Modulo ),
+			b'+' => Some(Plus   ),
+			b'-' => Some(Minus  ),
+			b'<' => Some(Less   ),
+			b'>' => Some(Greater),
+			b'&' => Some(BitAnd ),
+			b'^' => Some(BitXor ),
+			b'|' => Some(BitOr  ),
+			_ => None,
+		}) {
+			return Some((unsafe { self.source.consume_str_n(1) }, op));
+		}
+		None
 	}
 
 	fn parse_string_literal(&mut self) -> Literal<'a> {
@@ -212,56 +217,41 @@ impl<'a> Parser<'a> {
 	}
 
 	fn parse_number(&mut self) -> Result<Option<Literal<'a>>, Error<'a>> {
+		let s = &mut self.source;
 
-		if self.source.first().map(|&b| (b as char).is_digit(10)) != Some(true) {
-			if !self.source.starts_with(b".") || self.source[1..].first().map(|&b| (b as char).is_digit(10)) != Some(true) {
-				return Ok(None);
-			}
+		if s.get(s.starts_with(b".") as usize).map(|&b| (b as char).is_digit(10)) != Some(true) {
+			return Ok(None);
 		}
 
-		let base = if self.source.consume("0x").is_some() || self.source.consume("0X").is_some() {
-			16
-		} else if self.source.consume("0o").is_some() || self.source.consume("0O").is_some() {
-			8
-		} else if self.source.consume("0b").is_some() || self.source.consume("0B").is_some() {
-			2
+		let base = if let Some(b) = s.get(0..2).and_then(|x| match x {
+			b"0x" | b"0X" => Some(16),
+			b"0o" | b"0O" => Some(8),
+			b"0b" | b"0B" => Some(2),
+			_ => None
+		}) {
+			s.consume_n(2);
+			b
 		} else {
 			10
 		};
 
-		let integer_part = self.source.consume_while(|c| c.is_digit(base));
+		let integer_part = s.consume_while(|c| c.is_digit(base));
 
-		let fractional_part = if self.source.consume(".").is_some() {
-			Some(self.source.consume_while(|c| c.is_digit(base)))
-		} else {
-			None
-		};
+		let fractional_part = s.consume(".").map(|_| s.consume_while(|c| c.is_digit(base)));
 
-		let exponent_part = if
-			self.source.consume(if base == 16 { "p" } else { "e" }).is_some() ||
-			self.source.consume(if base == 16 { "P" } else { "E" }).is_some()
-		{
-			let sign = if self.source.consume("+").is_some() {
-				false
-			} else if self.source.consume("-").is_some() {
-				true
-			} else {
-				false
-			};
-			Some((sign, self.source.consume_while(|c| c.is_digit(base))))
-		} else {
-			None
-		};
+		let exponent_part = s.consume_one_of(if base == 16 {"pP"} else {"eE"}).map(|_| (
+			s.consume_one_of("+-") == Some("-"),
+			s.consume_while(|c| c.is_digit(base))
+		));
 
 		if exponent_part.is_none() || fractional_part.is_none() {
 			// Integer
 			if integer_part.is_empty() {
-				Err(error(integer_part.as_bytes(), "missing digits".to_string()))
-			} else {
-				match u64::from_str_radix(integer_part, base) {
-					Ok(i) => Ok(Some(Literal::Integer(i))),
-					Err(_) => Err(error(integer_part.as_bytes(), "integer too large".to_string())),
-				}
+				return Err(error(integer_part.as_bytes(), "missing digits".to_string()));
+			}
+			match u64::from_str_radix(integer_part, base) {
+				Ok(i) => Ok(Some(Literal::Integer(i))),
+				Err(_) => Err(error(integer_part.as_bytes(), "integer too large".to_string())),
 			}
 		} else {
 			// Float
