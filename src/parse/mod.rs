@@ -48,7 +48,7 @@ impl<'a> Parser<'a> {
 				error(&self.source[..0], "expected `='".to_string())
 			)?;
 			let value = self.parse_expression(&element_end)?;
-			keys.push(Rc::new(Expression::Identifier(key)));
+			keys.push(Rc::new(Expression::Literal(Literal::String(key))));
 			values.push(Rc::new(value));
 		}
 	}
