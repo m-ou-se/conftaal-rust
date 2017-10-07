@@ -115,6 +115,9 @@ impl<'a> Parser<'a> {
 			let list = self.parse_list(&End::MatchingBracket(open, "]"))?;
 			Ok(Some(Expression::Literal(Literal::List(list))))
 
+		} else if self.source.starts_with('"') {
+			Ok(Some(Expression::Literal(self.parse_string_literal())))
+
 		} else if let Some(number) = self.parse_number()? {
 			Ok(Some(Expression::Literal(number)))
 
