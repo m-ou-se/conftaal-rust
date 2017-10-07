@@ -3,9 +3,9 @@ mod error;
 mod whitespace;
 pub mod end; // TODO: make private
 
-use std::u64;
 use std::mem;
 use std::rc::Rc;
+use std::u64;
 
 use expression::{Expression,OpAndLhs,Literal};
 use operator::{UnaryOperator,BinaryOperator,Operator,Order,higher_precedence};
