@@ -104,8 +104,7 @@ impl<'a> Parser<'a> {
 			Ok(Some(Expression::Identifier(identifier)))
 
 		} else if self.source.starts_with("\"") {
-			// TODO: parse string literal
-			unimplemented!();
+			unimplemented!("string literals");
 
 		} else if let Some(open) = self.source.consume("{") {
 			let (keys, values) = self.parse_object(&End::MatchingBracket(open, "}"))?;
@@ -119,8 +118,7 @@ impl<'a> Parser<'a> {
 			Ok(Some(Expression::Literal(number)))
 
 		} else if self.source.starts_with("\\") {
-			// TODO: parse lambda
-			unimplemented!();
+			unimplemented!("lambdas");
 
 		} else {
 			Ok(None)
@@ -216,7 +214,7 @@ impl<'a> Parser<'a> {
 	}
 
 	fn parse_string_literal(&mut self) -> Literal<'a> {
-		unimplemented!()
+		unimplemented!("string literals");
 	}
 
 	fn parse_number(&mut self) -> Option<Literal<'a>> {
