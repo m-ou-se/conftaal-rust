@@ -18,7 +18,7 @@ impl<'a> End<'a> {
 		match self {
 			&End::EndOfFile => source.is_empty(),
 			&End::Specific(s) | &End::MatchingBracket(_, s) => source.consume(s).is_some(),
-			&End::ElementEnd => source.consume_if(|x| x == ',' || x == ';' || x == '\n').is_some(),
+			&End::ElementEnd => source.consume_one_of(",;\n").is_some(),
 		}
 	}
 

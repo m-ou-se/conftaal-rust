@@ -5,7 +5,7 @@ pub trait Consume<'a> {
 	fn consume_n(&mut self, n: usize) -> &'a [u8];
 	unsafe fn consume_str_n(&mut self, n: usize) -> &'a str;
 	fn consume(&mut self, what: &str) -> Option<&'a str>;
-	fn consume_if<F: FnOnce(char)->bool>(&mut self, f: F) -> Option<&'a str>;
+	fn consume_one_of(&mut self, chars: &str) -> Option<&'a str>;
 	fn consume_while<F: FnMut(char)->bool>(&mut self, f: F) -> &'a str;
 }
 
@@ -25,13 +25,14 @@ impl<'a> Consume<'a> for &'a [u8] {
 			None
 		}
 	}
-	fn consume_if<F: FnOnce(char)->bool>(&mut self, f: F) -> Option<&'a str> {
-		match self.first() {
-			Some(&b) if (b as char).is_ascii() && f(b as char) => {
+	fn consume_one_of(&mut self, chars: &str) -> Option<&'a str> {
+		self.first().and_then(|&b|
+			if (b as char).is_ascii() && chars.contains(b as char) {
 				Some(unsafe { self.consume_str_n(1) })
-			},
-			_ => None,
-		}
+			} else {
+				None
+			}
+		)
 	}
 	fn consume_while<F: FnMut(char)->bool>(&mut self, mut f: F) -> &'a str {
 		let n = self.iter().position(
@@ -69,25 +70,27 @@ mod test {
 	}
 
 	#[test]
-	fn consume_if() {
+	fn consume_one_of() {
 		let mut m: &'static [u8] = HELLO;
-		let h = m.consume_if(|x| x == 'h');
-		let x = m.consume_if(|x| x == 'x');
+		let h = m.consume_one_of("abcdefgh");
+		let x = m.consume_one_of("xyz");
+		let y = m.consume_one_of("");
 		assert_eq!(m, b"ello");
 		assert_eq!(h, Some("h"));
 		assert_eq!(x, None);
+		assert_eq!(y, None);
 		assert_eq!(m.as_ptr(), HELLO[1..].as_ptr());
 		assert_eq!(h.unwrap().as_ptr(), HELLO.as_ptr());
 	}
 
-	// consume_if now only works on ascii.
+	// consume_one_of now only works on ascii.
 	// This test verifies that it just stops at the first non-ascii character.
 	#[test]
 	fn wide_char() {
-		let mut m = "αβ".as_bytes();
-		let x = m.consume_if(|x| x == 'α');
-		let y = m.consume_if(|x| x == 'ξ');
-		assert_eq!(x, None);
+		let mut m = "aαβ".as_bytes();
+		let x = m.consume_one_of("αa");
+		let y = m.consume_one_of("ξ");
+		assert_eq!(x, Some("a"));
 		assert_eq!(y, None);
 	}
 
@@ -95,7 +98,7 @@ mod test {
 	fn empty() {
 		let mut m = b"" as &[u8];
 		let p = m.as_ptr();
-		assert_eq!(m.consume_if(|_| true), None);
+		assert_eq!(m.consume_one_of("\0\nfoo bar"), None);
 		assert_eq!(m, b"");
 		assert_eq!(m.as_ptr(), p);
 	}
