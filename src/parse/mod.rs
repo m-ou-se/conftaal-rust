@@ -7,9 +7,6 @@ use std::u64;
 use std::mem;
 use std::rc::Rc;
 
-extern crate stringpool;
-use self::stringpool::stringtracker::StringTracker;
-
 use expression::{Expression,OpAndLhs,Literal};
 use operator::{UnaryOperator,BinaryOperator,Operator,Order,higher_precedence};
 use self::consume::Consume;
@@ -18,7 +15,6 @@ use self::error::{Error, Message, error};
 use self::whitespace::skip_whitespace;
 
 pub struct Parser<'a> {
-	//string_tracker: StringTracker<'a>,
 	pub source: &'a str,
 }
 
