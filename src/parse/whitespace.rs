@@ -1,13 +1,14 @@
-pub fn skip_whitespace(src: &mut &str, skip_newlines: bool) {
+pub fn skip_whitespace(src: &mut &[u8], skip_newlines: bool) {
 	loop {
-		*src = src.trim_left_matches(|x|
-			x == ' ' ||
-			x == '\t' ||
-			x == '\r' ||
-			(skip_newlines && x == '\n')
-		);
-		if src.starts_with('#') {
-			*src = src.trim_left_matches(|x| x != '\n');
+		let whitespace_end = src.iter().position(|&b| !match b {
+			b' ' | b'\t' | b'\r' => true,
+			b'\n' => skip_newlines,
+			_ => false
+		}).unwrap_or(src.len());
+		*src = &src[whitespace_end..];
+		if src.starts_with(b"#") {
+			let comment_end = src.iter().position(|&b| b == b'\n').unwrap_or(src.len());
+			*src = &src[comment_end..];
 		} else {
 			return;
 		}
@@ -16,31 +17,31 @@ pub fn skip_whitespace(src: &mut &str, skip_newlines: bool) {
 
 #[test]
 fn test() {
-	let mut s = "   \t\n\n\r\nbla\n ";
+	let mut s = "   \t\n\n\r\nbla\n ".as_bytes();
 	skip_whitespace(&mut s, true);
-	assert_eq!(s, "bla\n ");
+	assert_eq!(s, b"bla\n ");
 
-	let mut s = "   \n  bla\n ";
+	let mut s = "   \n  bla\n ".as_bytes();
 	skip_whitespace(&mut s, false);
-	assert_eq!(s, "\n  bla\n ");
+	assert_eq!(s, b"\n  bla\n ");
 
-	let mut s = "   #bla bla bla\n";
+	let mut s = "   #bla bla bla\n".as_bytes();
 	skip_whitespace(&mut s, false);
-	assert_eq!(s, "\n");
+	assert_eq!(s, b"\n");
 
-	let mut s = "#comment\n#second comment\n  #third\n\n  pizza";
+	let mut s = "#comment\n#second comment\n  #third\n\n  pizza".as_bytes();
 	skip_whitespace(&mut s, true);
-	assert_eq!(s, "pizza");
+	assert_eq!(s, b"pizza");
 
-	let mut s = "  ";
+	let mut s = "  ".as_bytes();
 	skip_whitespace(&mut s, true);
-	assert_eq!(s, "");
+	assert_eq!(s, b"");
 
-	let mut s = "a ";
+	let mut s = "a ".as_bytes();
 	skip_whitespace(&mut s, true);
-	assert_eq!(s, "a ");
+	assert_eq!(s, b"a ");
 
-	let mut s = "";
+	let mut s = "".as_bytes();
 	skip_whitespace(&mut s, true);
-	assert_eq!(s, "");
+	assert_eq!(s, b"");
 }

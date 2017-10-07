@@ -44,11 +44,11 @@ fn reconstruct(e: &Expression) -> String {
 }
 
 fn main() {
-	let mut p = Parser{
-		source: "bla_0[1 + 1, f(2, b+0x3A), [a, b] + {a = ~b, c = a+b+c; x = y; y = -x;}]"
-	};
+	let source = "bla_0[1 + 1, f(2, b+0x3A), [a, b] + {a = ~b, c = a+b+c; x = y; y = -x;}]";
 
-	println!("Parsing: {}", p.source);
+	let mut p = Parser{ source: source.as_bytes() };
+
+	println!("Parsing: {}", source);
 
 	match p.parse_expression(&End::EndOfFile.as_optional()) {
 		Ok(expr) => {

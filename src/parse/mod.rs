@@ -15,7 +15,7 @@ use self::error::{Error, Message, error};
 use self::whitespace::skip_whitespace;
 
 pub struct Parser<'a> {
-	pub source: &'a str,
+	pub source: &'a [u8],
 }
 
 impl<'a> Parser<'a> {
@@ -51,19 +51,14 @@ impl<'a> Parser<'a> {
 	}
 
 	pub fn parse_identifier(&mut self) -> Option<&'a str> {
-		if self.source.starts_with(|c|
-			(c >= 'a' && c <= 'z') ||
-			(c >= 'A' && c <= 'Z') ||
-			c == '_'
-		) {
-			Some(self.source.consume_while(|c|
-				(c >= 'a' && c <= 'z') ||
-				(c >= 'A' && c <= 'Z') ||
-				(c >= '0' && c <= '9') ||
-				c == '_'
-			))
-		} else {
-			None
+		match *self.source.first().unwrap_or(&0u8) {
+			b'a'...b'z' | b'A'...b'Z' | b'_' => Some(
+				self.source.consume_while(|c| match c {
+					'a'...'z' | 'A'...'Z' | '0'...'9' | '_' => true,
+					_ => false
+				}),
+			),
+			_ => None
 		}
 	}
 
@@ -100,7 +95,7 @@ impl<'a> Parser<'a> {
 		} else if let Some(identifier) = self.parse_identifier() {
 			Ok(Some(Expression::Identifier(identifier)))
 
-		} else if self.source.starts_with("\"") {
+		} else if self.source.starts_with(b"\"") {
 			unimplemented!("string literals");
 
 		} else if let Some(open) = self.source.consume("{") {
@@ -111,13 +106,13 @@ impl<'a> Parser<'a> {
 			let list = self.parse_list(&End::MatchingBracket(open, "]"))?;
 			Ok(Some(Expression::Literal(Literal::List(list))))
 
-		} else if self.source.starts_with('"') {
+		} else if self.source.starts_with(b"\"") {
 			Ok(Some(Expression::Literal(self.parse_string_literal())))
 
 		} else if let Some(number) = self.parse_number()? {
 			Ok(Some(Expression::Literal(number)))
 
-		} else if self.source.starts_with("\\") {
+		} else if self.source.starts_with(b"\\") {
 			unimplemented!("lambdas");
 
 		} else {
@@ -170,47 +165,46 @@ impl<'a> Parser<'a> {
 
 	fn parse_unary_operator(&mut self) -> Option<(&'a str, UnaryOperator)> {
 		use self::UnaryOperator::*;
-		match self.source.as_bytes().get(0) {
-			Some(&b'+') => Some(Plus),
-			Some(&b'-') => Some(Minus),
-			Some(&b'!') => Some(Complement),
-			Some(&b'~') => Some(LogicalNot),
+		match self.source.first().unwrap_or(&0u8) {
+			&b'+' => Some(Plus),
+			&b'-' => Some(Minus),
+			&b'!' => Some(Complement),
+			&b'~' => Some(LogicalNot),
 			_ => None,
-		}.map(|op| (self.source.consume_n(1), op))
+		}.map(|op| (unsafe { self.source.consume_str_n(1) }, op))
 	}
 
 	fn parse_binary_operator(&mut self) -> Option<(&'a str, BinaryOperator)> {
 		use self::BinaryOperator::*;
-		let b: &[u8] = self.source.as_bytes();
 		match (
-			match b.get(0) { Some(&x) => x, None => 0 },
-			match b.get(1) { Some(&x) => x, None => 0 },
+			self.source.get(0).unwrap_or(&0u8),
+			self.source.get(1).unwrap_or(&0u8)
 		) {
-			(b'.',    _) => Some((1, Dot           )),
-			(b'[',    _) => Some((1, Index         )),
-			(b'(',    _) => Some((1, Call          )),
-			(b':',    _) => Some((1, Colon         )),
-			(b'*', b'*') => Some((2, Power         )),
-			(b'*',    _) => Some((1, Times         )),
-			(b'/',    _) => Some((1, Divide        )),
-			(b'%',    _) => Some((1, Modulo        )),
-			(b'+',    _) => Some((1, Plus          )),
-			(b'-',    _) => Some((1, Minus         )),
-			(b'<', b'=') => Some((2, LessOrEqual   )),
-			(b'<', b'<') => Some((2, LeftShift     )),
-			(b'<',    _) => Some((1, Less          )),
-			(b'>', b'=') => Some((2, GreaterOrEqual)),
-			(b'>', b'>') => Some((2, RightShift    )),
-			(b'>',    _) => Some((1, Greater       )),
-			(b'=', b'=') => Some((2, Equal         )),
-			(b'!', b'=') => Some((2, Inequal       )),
-			(b'&', b'&') => Some((2, LogicalAnd    )),
-			(b'&',    _) => Some((1, BitAnd        )),
-			(b'^',    _) => Some((1, BitXor        )),
-			(b'|', b'|') => Some((2, LogicalOr     )),
-			(b'|',    _) => Some((1, BitOr         )),
+			(&b'.',     _) => Some((1, Dot           )),
+			(&b'[',     _) => Some((1, Index         )),
+			(&b'(',     _) => Some((1, Call          )),
+			(&b':',     _) => Some((1, Colon         )),
+			(&b'*', &b'*') => Some((2, Power         )),
+			(&b'*',     _) => Some((1, Times         )),
+			(&b'/',     _) => Some((1, Divide        )),
+			(&b'%',     _) => Some((1, Modulo        )),
+			(&b'+',     _) => Some((1, Plus          )),
+			(&b'-',     _) => Some((1, Minus         )),
+			(&b'<', &b'=') => Some((2, LessOrEqual   )),
+			(&b'<', &b'<') => Some((2, LeftShift     )),
+			(&b'<',     _) => Some((1, Less          )),
+			(&b'>', &b'=') => Some((2, GreaterOrEqual)),
+			(&b'>', &b'>') => Some((2, RightShift    )),
+			(&b'>',     _) => Some((1, Greater       )),
+			(&b'=', &b'=') => Some((2, Equal         )),
+			(&b'!', &b'=') => Some((2, Inequal       )),
+			(&b'&', &b'&') => Some((2, LogicalAnd    )),
+			(&b'&',     _) => Some((1, BitAnd        )),
+			(&b'^',     _) => Some((1, BitXor        )),
+			(&b'|', &b'|') => Some((2, LogicalOr     )),
+			(&b'|',     _) => Some((1, BitOr         )),
 			_ => None,
-		}.map(|(n, op)| (self.source.consume_n(n), op))
+		}.map(|(n, op)| (unsafe { self.source.consume_str_n(n) }, op))
 	}
 
 	fn parse_string_literal(&mut self) -> Literal<'a> {
@@ -219,8 +213,8 @@ impl<'a> Parser<'a> {
 
 	fn parse_number(&mut self) -> Result<Option<Literal<'a>>, Error<'a>> {
 
-		if !self.source.starts_with(|c: char| c.is_digit(10)) {
-			if !self.source.starts_with('.') || !self.source[1..].starts_with(|c: char| c.is_digit(10)) {
+		if self.source.first().map(|&b| (b as char).is_digit(10)) != Some(true) {
+			if !self.source.starts_with(b".") || self.source[1..].first().map(|&b| (b as char).is_digit(10)) != Some(true) {
 				return Ok(None);
 			}
 		}
@@ -262,11 +256,11 @@ impl<'a> Parser<'a> {
 		if exponent_part.is_none() || fractional_part.is_none() {
 			// Integer
 			if integer_part.is_empty() {
-				Err(error(integer_part, "missing digits".to_string()))
+				Err(error(integer_part.as_bytes(), "missing digits".to_string()))
 			} else {
 				match u64::from_str_radix(integer_part, base) {
 					Ok(i) => Ok(Some(Literal::Integer(i))),
-					Err(_) => Err(error(integer_part, "integer too large".to_string())),
+					Err(_) => Err(error(integer_part.as_bytes(), "integer too large".to_string())),
 				}
 			}
 		} else {
@@ -316,11 +310,11 @@ fn is_lhs<'a>(
 					} else {
 						format!("operator `{}' has equal precedence as `{}' and is non-associative", op_source, left_op_source)
 					},
-				location: Some(op_source),
+				location: Some(op_source.as_bytes()),
 			},
 			notes: vec![Message{
 				message: format!("conflicting `{}' here", left_op_source),
-				location: Some(left_op_source),
+				location: Some(left_op_source.as_bytes()),
 			}],
 		})
 	}

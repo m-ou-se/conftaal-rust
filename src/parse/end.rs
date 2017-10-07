@@ -14,7 +14,7 @@ pub enum End<'a> {
 
 impl<'a> End<'a> {
 
-	fn consume(&self, source: &mut &str) -> bool {
+	fn consume(&self, source: &mut &[u8]) -> bool {
 		match self {
 			&End::EndOfFile => source.is_empty(),
 			&End::Specific(s) | &End::MatchingBracket(_, s) => source.consume(s).is_some(),
@@ -22,7 +22,7 @@ impl<'a> End<'a> {
 		}
 	}
 
-	fn matches(&self, mut source: &str) -> bool {
+	fn matches(&self, mut source: &[u8]) -> bool {
 		self.consume(&mut source)
 	}
 
@@ -34,18 +34,18 @@ impl<'a> End<'a> {
 		}
 	}
 
-	fn error(&self, source: &'a str) -> Error<'a> {
+	fn error(&self, source: &'a [u8]) -> Error<'a> {
 		let mut e = error(&source[..0], format!("expected {}", self.description()));
 		if let &End::MatchingBracket(b, _) = self {
 			e.notes = vec![Message{
 				message: format!("... to match this `{}'", b),
-				location: Some(b)
+				location: Some(b.as_bytes())
 			}];
 		}
 		e
 	}
 
-	pub fn parse(&self, source: &mut &'a str) -> Result<bool, Error<'a>> {
+	pub fn parse(&self, source: &mut &'a [u8]) -> Result<bool, Error<'a>> {
 		skip_whitespace(source, match self { &End::ElementEnd => false, _ => true });
 		let did_match = self.consume(source);
 		if !did_match && source.is_empty() {
@@ -71,7 +71,7 @@ pub struct OptionalEnd<'a> {
 
 impl<'a> OptionalEnd<'a> {
 
-	pub fn parse(&self, source: &mut &'a str) -> Result<bool, Error<'a>> {
+	pub fn parse(&self, source: &mut &'a [u8]) -> Result<bool, Error<'a>> {
 		skip_whitespace(source, match self.end { End::ElementEnd => false, _ => true });
 		let did_match = self.end.consume(source) || self.or_before.map(|e| e.matches(*source)).unwrap_or(false);
 		if !did_match && source.is_empty() {
@@ -89,7 +89,7 @@ impl<'a> OptionalEnd<'a> {
 		desc
 	}
 
-	fn error(&self, source: &'a str) -> Error<'a> {
+	fn error(&self, source: &'a [u8]) -> Error<'a> {
 		match self.or_before {
 			None => self.end.error(source),
 			Some(_) => error(&source[..0], format!("expected {}", self.description())),
