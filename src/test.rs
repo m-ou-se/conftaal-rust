@@ -38,6 +38,7 @@ fn reconstruct(e: &Expression) -> String {
 			s += ")";
 			s
 		}
+		Literal(String(s)) => format!("{:?}", s),
 		Literal(Integer(i)) => format!("{}", i),
 		Literal(_) => "<some literal>".to_string(),
 	}
