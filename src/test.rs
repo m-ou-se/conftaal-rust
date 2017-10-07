@@ -38,13 +38,14 @@ fn reconstruct(e: &Expression) -> String {
 			s += ")";
 			s
 		}
+		Literal(Integer(i)) => format!("{}", i),
 		Literal(_) => "<some literal>".to_string(),
 	}
 }
 
 fn main() {
 	let mut p = Parser{
-		source: "bla_0[x, f(a, b+c), [a, b] + {a = ~b, c = a+b+c; x = y; y = -x;}]"
+		source: "bla_0[1 + 1, f(2, b+0x3A), [a, b] + {a = ~b, c = a+b+c; x = y; y = -x;}]"
 	};
 
 	println!("Parsing: {}", p.source);

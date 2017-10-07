@@ -36,7 +36,7 @@ impl<'a> OpAndLhs<'a> {
 
 #[derive(Debug)]
 pub enum Literal<'a> {
-	Integer(i64),
+	Integer(u64),
 	Double(f64),
 	String(&'a str),
 	List(Vec<Rc<Expression<'a>>>),

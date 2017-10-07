@@ -3,6 +3,7 @@ mod error;
 mod whitespace;
 pub mod end; // TODO: make private
 
+use std::u64;
 use std::mem;
 use std::rc::Rc;
 
@@ -114,7 +115,7 @@ impl<'a> Parser<'a> {
 			let list = self.parse_list(&End::MatchingBracket(open, "]"))?;
 			Ok(Some(Expression::Literal(Literal::List(list))))
 
-		} else if let Some(number) = self.parse_number() {
+		} else if let Some(number) = self.parse_number()? {
 			Ok(Some(Expression::Literal(number)))
 
 		} else if self.source.starts_with("\\") {
@@ -217,8 +218,63 @@ impl<'a> Parser<'a> {
 		unimplemented!("string literals");
 	}
 
-	fn parse_number(&mut self) -> Option<Literal<'a>> {
-		unimplemented!()
+	fn parse_number(&mut self) -> Result<Option<Literal<'a>>, Error<'a>> {
+
+		if !self.source.starts_with(|c: char| c.is_digit(10)) {
+			if !self.source.starts_with('.') || !self.source[1..].starts_with(|c: char| c.is_digit(10)) {
+				return Ok(None);
+			}
+		}
+
+		let base = if self.source.consume("0x").is_some() || self.source.consume("0X").is_some() {
+			16
+		} else if self.source.consume("0o").is_some() || self.source.consume("0O").is_some() {
+			8
+		} else if self.source.consume("0b").is_some() || self.source.consume("0B").is_some() {
+			2
+		} else {
+			10
+		};
+
+		let integer_part = self.source.consume_while(|c| c.is_digit(base));
+
+		let fractional_part = if self.source.consume(".").is_some() {
+			Some(self.source.consume_while(|c| c.is_digit(base)))
+		} else {
+			None
+		};
+
+		let exponent_part = if
+			self.source.consume(if base == 16 { "p" } else { "e" }).is_some() ||
+			self.source.consume(if base == 16 { "P" } else { "E" }).is_some()
+		{
+			let sign = if self.source.consume("+").is_some() {
+				false
+			} else if self.source.consume("-").is_some() {
+				true
+			} else {
+				false
+			};
+			Some((sign, self.source.consume_while(|c| c.is_digit(base))))
+		} else {
+			None
+		};
+
+		if exponent_part.is_none() || fractional_part.is_none() {
+			// Integer
+			if integer_part.is_empty() {
+				Err(error(integer_part, "missing digits".to_string()))
+			} else {
+				match u64::from_str_radix(integer_part, base) {
+					Ok(i) => Ok(Some(Literal::Integer(i))),
+					Err(_) => Err(error(integer_part, "integer too large".to_string())),
+				}
+			}
+		} else {
+			// Float
+			unimplemented!("parsing float literals");
+		}
+
 	}
 
 }
