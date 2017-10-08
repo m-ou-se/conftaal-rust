@@ -2,6 +2,7 @@
 name = "conftaal"
 version = "0.1.0"
 authors = ["Mara Bos <m-ou.se@m-ou.se>"]
+license = "BSD-2-Clause"
 
 [lib]
 name = "conftaal"
