@@ -4,11 +4,25 @@ use super::consume::Consume;
 use super::error::{Error, Message, error};
 use super::whitespace::skip_whitespace;
 
+/// Determines until what point should be parsed.
+/// An value of this type is given to the `parse_*` functions.
 #[derive(Clone, Copy)]
 pub enum End<'a> {
+
+	/// Don't stop till the end of the file is earched.
 	EndOfFile,
+
+	/// Only stop when this specific string is found.
 	Specific(&'static str),
+
+	/// Only stop when these brackets are matched.
+	///
+	/// `MatchingBracket("(", ")")` looks for a `")"` to match the `"("`.
 	MatchingBracket(&'a str, &'static str),
+
+	/// Stop at either a comma, semicolon, or newline.
+	///
+	/// Values in conftaal objects use this mode.
 	ElementEnd, // , or ; or \n
 }
 
@@ -26,6 +40,8 @@ impl<'a> End<'a> {
 		self.consume(&mut source)
 	}
 
+	/// An human-readable description of what this `End` matches.
+	/// Useful for in error messages.
 	pub fn description(&self) -> String {
 		match self {
 			&End::EndOfFile => "end of file".to_string(),
@@ -45,6 +61,12 @@ impl<'a> End<'a> {
 		e
 	}
 
+	/// Check if we reached this `End` yet.
+	///
+	/// First eats whitespace, and then tries to match.
+	///
+	/// If the end of the file is reached, and this is not a `End::EndOfFile`,
+	/// an error is given.
 	pub fn parse(&self, source: &mut &'a [u8]) -> Result<bool, Error<'a>> {
 		skip_whitespace(source, match self { &End::ElementEnd => false, _ => true });
 		let did_match = self.consume(source);
