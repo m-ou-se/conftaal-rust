@@ -50,16 +50,22 @@ impl<'a> Parser<'a> {
 		}
 	}
 
-	pub fn parse_identifier(&mut self) -> Option<&'a str> {
-		match *self.source.first().unwrap_or(&0u8) {
-			b'a'...b'z' | b'A'...b'Z' | b'_' => Some(
-				self.source.consume_while(|c| match c {
-					'a'...'z' | 'A'...'Z' | '0'...'9' | '_' => true,
-					_ => false
-				}),
-			),
-			_ => None
+	fn is_identifier_char(c: char, start: bool) -> bool {
+		match c {
+			'a'...'z' | 'A'...'Z' | '_' => true,
+			'0'...'9' => !start,
+			_ => false,
 		}
+	}
+
+	pub fn parse_identifier(&mut self) -> Option<&'a str> {
+		self.source.first().and_then(|&b|
+			if is_identifier_char(b as char, true) {
+				Some(self.source.consume_while(|c| is_identifier_char(c, false)))
+			} else {
+				None
+			}
+		)
 	}
 
 	pub fn parse_expression(&mut self, end: &OptionalEnd<'a>) -> Result<Expression<'a>, Error<'a>> {
