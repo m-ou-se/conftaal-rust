@@ -39,7 +39,7 @@ pub enum Operator {
 	Binary(BinaryOperator),
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Order {
 	Left,
 	Right,
