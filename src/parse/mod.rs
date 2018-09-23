@@ -248,7 +248,7 @@ impl<'a> Parser<'a> {
 			s.consume_while(|c| c.is_digit(base))
 		));
 
-		if exponent_part.is_none() || fractional_part.is_none() {
+		if exponent_part.is_none() && fractional_part.is_none() {
 			// Integer
 			if integer_part.is_empty() {
 				return Err(error(integer_part.as_bytes(), "missing digits".to_string()));
