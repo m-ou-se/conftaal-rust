@@ -1,5 +1,4 @@
 use std::str::from_utf8_unchecked;
-use std::ascii::AsciiExt;
 
 pub trait Consume<'a> {
 	fn consume_n(&mut self, n: usize) -> &'a [u8];
