@@ -7,7 +7,7 @@ use std::mem;
 use std::rc::Rc;
 use std::u64;
 
-use expression::{Expression,OpAndLhs,Literal};
+use expression::{Expression,Op,Literal};
 use operator::{UnaryOperator,BinaryOperator,Operator,Order,higher_precedence};
 use self::consume::Consume;
 use self::end::{End, OptionalEnd};
@@ -92,8 +92,7 @@ impl<'a> Parser<'a> {
 				None => Err(error(&self.source[..0], format!("missing expression after unary `{}' operator", op_source))),
 				Some(subexpr) => Ok(Some(Expression::Op{
 					op_source: op_source,
-					op_and_lhs: OpAndLhs::UnaryOp{op: op},
-					rhs: Rc::new(subexpr),
+					op: Op::UnaryOp{op, rhs: Rc::new(subexpr)},
 					parenthesized: false
 				}))
 			}
@@ -158,11 +157,11 @@ impl<'a> Parser<'a> {
 
 		*old_lhs = Expression::Op{
 			op_source: op_source,
-			op_and_lhs: OpAndLhs::BinaryOp{
+			op: Op::BinaryOp{
 				op: op,
 				lhs: new_lhs,
+				rhs: Rc::new(rhs),
 			},
-			rhs: Rc::new(rhs),
 			parenthesized: false,
 		};
 
@@ -277,13 +276,14 @@ fn find_lhs<'a, 'b>(
 		let current = expr;
 		match current {
 			&mut Expression::Op{
-				op_and_lhs: ref e_op_and_lhs,
+				op: e_op,
 				op_source: e_op_source,
-				rhs: ref mut e_rhs,
 				parenthesized: false,
 				..
-			} if !is_lhs(e_op_and_lhs.op(), e_op_source, op, op_source)? => {
-				expr = Rc::get_mut(e_rhs).unwrap();
+			} if !is_lhs(e_op.op(), e_op_source, op, op_source)? => {
+				expr = Rc::get_mut(match e_op {
+					Op::UnaryOp{rhs, ..} | Op::BinaryOp{rhs, ..} => rhs
+				}).unwrap();
 			}
 			_ => return Ok(current)
 		}

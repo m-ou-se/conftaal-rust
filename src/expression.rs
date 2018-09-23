@@ -7,29 +7,30 @@ pub enum Expression<'a> {
 	Identifier(&'a str),
 	Op{
 		op_source: &'a str,
-		op_and_lhs: OpAndLhs<'a>,
-		rhs: Rc<Expression<'a>>,
+		op: Op<'a>,
 		parenthesized: bool,
 	},
 	Literal(Literal<'a>),
 }
 
 #[derive(Debug)]
-pub enum OpAndLhs<'a> {
+pub enum Op<'a> {
 	UnaryOp{
 		op: UnaryOperator,
+		rhs: Rc<Expression<'a>>,
 	},
 	BinaryOp{
 		op: BinaryOperator,
+		rhs: Rc<Expression<'a>>,
 		lhs: Rc<Expression<'a>>,
 	},
 }
 
-impl<'a> OpAndLhs<'a> {
+impl<'a> Op<'a> {
 	pub fn op(&self) -> Operator {
 		match self {
-			&OpAndLhs::UnaryOp{op} => Operator::Unary(op),
-			&OpAndLhs::BinaryOp{op, ..} => Operator::Binary(op),
+			&Op::UnaryOp{op, ..} => Operator::Unary(op),
+			&Op::BinaryOp{op, ..} => Operator::Binary(op),
 		}
 	}
 }
