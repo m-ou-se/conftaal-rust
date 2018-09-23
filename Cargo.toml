@@ -10,7 +10,7 @@ name = "conftaal"
 path = "src/lib.rs"
 
 [[bin]]
-name = "conftaal-test"
-path = "src/test.rs"
+name = "conftaal-parse"
+path = "tools/parse.rs"
 
 [dependencies]
