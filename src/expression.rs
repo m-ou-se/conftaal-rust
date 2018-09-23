@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use operator::{UnaryOperator,BinaryOperator,Operator};
+use operator::{UnaryOperator, BinaryOperator, Operator};
 
 #[derive(Debug)]
 pub enum Expression<'a> {
