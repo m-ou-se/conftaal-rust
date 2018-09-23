@@ -170,7 +170,7 @@ impl<'a> Parser<'a> {
 
 	fn parse_unary_operator(&mut self) -> Option<(&'a str, UnaryOperator)> {
 		use self::UnaryOperator::*;
-		self.source.first().and_then(|x| match *x {
+		self.source.first().and_then(|x| match x {
 			b'+' => Some(Plus),
 			b'-' => Some(Minus),
 			b'!' => Some(Complement),
@@ -195,7 +195,7 @@ impl<'a> Parser<'a> {
 		}) {
 			return Some((unsafe { self.source.consume_str_n(2) }, op));
 		}
-		if let Some(op) = self.source.get(0).and_then(|x| match *x {
+		if let Some(op) = self.source.get(0).and_then(|x| match x {
 			b'.' => Some(Dot    ),
 			b'[' => Some(Index  ),
 			b'(' => Some(Call   ),
@@ -275,7 +275,7 @@ fn find_lhs<'a, 'b>(
 	loop {
 		let current = expr;
 		match current {
-			&mut Expression::Op{
+			Expression::Op{
 				op: e_op,
 				op_source: e_op_source,
 				parenthesized: false,

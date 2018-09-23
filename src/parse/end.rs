@@ -30,9 +30,9 @@ impl<'a> End<'a> {
 
 	fn consume(&self, source: &mut &[u8]) -> bool {
 		match self {
-			&End::EndOfFile => source.is_empty(),
-			&End::Specific(s) | &End::MatchingBracket(_, s) => source.consume(s).is_some(),
-			&End::ElementEnd => source.consume_one_of(",;\n").is_some(),
+			End::EndOfFile => source.is_empty(),
+			End::Specific(s) | End::MatchingBracket(_, s) => source.consume(s).is_some(),
+			End::ElementEnd => source.consume_one_of(",;\n").is_some(),
 		}
 	}
 
@@ -44,9 +44,9 @@ impl<'a> End<'a> {
 	/// Useful for in error messages.
 	pub fn description(&self) -> String {
 		match self {
-			&End::EndOfFile => "end of file".to_string(),
-			&End::Specific(s) | &End::MatchingBracket(_, s) => format!("`{}'", s),
-			&End::ElementEnd => "newline or `,` or `;'".to_string(),
+			End::EndOfFile => "end of file".to_string(),
+			End::Specific(s) | End::MatchingBracket(_, s) => format!("`{}'", s),
+			End::ElementEnd => "newline or `,` or `;'".to_string(),
 		}
 	}
 
