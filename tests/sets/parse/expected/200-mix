@@ -1,0 +1,1 @@
+(object keys=(list str:"hello" str:"world" str:"foo" str:"test") values=(list (list id:a id:b id:c) (op+ (op[ id:hello (list id:index)) (op[ id:hello (list id:index2))) (op** (op* (op+ id:bar id:a) id:b) id:c) (op> id:a (op+ (op** id:b (op** int:3 int:1365)) int:83))))

@@ -1,0 +1,1 @@
+(object keys=(list str:"foo" str:"baz" str:"world" str:"pizza") values=(list id:bar id:hello id:pizza id:test))
