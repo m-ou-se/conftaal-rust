@@ -29,7 +29,7 @@ if [ -z "$1" ]; then
 fi
 
 if [ ${#tests[@]} -eq 0 ]; then
-	tests=(parse)
+	tests=(parse parse-fail)
 fi
 
 program="$@"
