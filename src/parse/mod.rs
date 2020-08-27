@@ -89,7 +89,7 @@ impl<'a> Parser<'a> {
 			match self.parse_expression_atom(end)? {
 				None => Err(error(&self.source[..0], format!("missing expression after unary `{}' operator", op_source))),
 				Some(subexpr) => Ok(Some(Expression::Op{
-					op_source: op_source,
+					op_source,
 					op: Op::UnaryOp{op, rhs: Box::new(subexpr)},
 					parenthesized: false
 				}))
@@ -154,9 +154,9 @@ impl<'a> Parser<'a> {
 		let new_lhs = Box::new(mem::replace(old_lhs, Expression::Identifier("")));
 
 		*old_lhs = Expression::Op{
-			op_source: op_source,
+			op_source,
 			op: Op::BinaryOp{
-				op: op,
+				op,
 				lhs: new_lhs,
 				rhs: Box::new(rhs),
 			},

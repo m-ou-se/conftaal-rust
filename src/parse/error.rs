@@ -13,7 +13,7 @@ pub struct Error<'a> {
 pub fn error<'a>(location: &'a [u8], message: String) -> Error<'a> {
 	Error{
 		message: Message{
-			message: message,
+			message,
 			location: Some(location),
 		},
 		notes: vec![],
