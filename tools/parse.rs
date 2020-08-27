@@ -20,17 +20,17 @@ fn format(e: &Expression) -> String {
     use Expression::*;
     use Literal::*;
     use Op::*;
-    match *e {
+    match e {
         Identifier(id) => format!("id:{}", id),
         Op {
             op_source,
-            op: UnaryOp { ref rhs, .. },
+            op: UnaryOp { rhs, .. },
             ..
         } => format!("(op{} {})", op_source, format(rhs.as_ref())),
         Op {
             op_source,
             op: BinaryOp {
-                ref rhs, ref lhs, ..
+                rhs, lhs, ..
             },
             ..
         } => format!(
@@ -39,8 +39,8 @@ fn format(e: &Expression) -> String {
             format(lhs.as_ref()),
             format(rhs.as_ref())
         ),
-        Literal(List(ref elements)) => format_list(elements),
-        Literal(Object(ref keys, ref values)) => format!(
+        Literal(List(elements)) => format_list(elements),
+        Literal(Object(keys, values)) => format!(
             "(object keys={} values={})",
             format_list(keys),
             format_list(values)
