@@ -4,7 +4,6 @@ mod whitespace;
 pub mod end; // TODO: make private
 
 use std::mem;
-use std::rc::Rc;
 use std::u64;
 
 use expression::{Expression,Op,Literal};
@@ -20,17 +19,17 @@ pub struct Parser<'a> {
 
 impl<'a> Parser<'a> {
 
-	pub fn parse_list(&mut self, end: &End<'a>) -> Result<Vec<Rc<Expression<'a>>>, Error<'a>> {
+	pub fn parse_list(&mut self, end: &End<'a>) -> Result<Vec<Box<Expression<'a>>>, Error<'a>> {
 		let mut elements = Vec::new();
 		let element_end = End::Specific(",").or_before(*end);
 		loop {
 			if end.parse(&mut self.source)? { return Ok(elements); }
-			elements.push(Rc::new(self.parse_expression(&element_end)?));
+			elements.push(Box::new(self.parse_expression(&element_end)?));
 		}
 	}
 
 	pub fn parse_object(&mut self, end: &End<'a>)
-		-> Result<(Vec<Rc<Expression<'a>>>, Vec<Rc<Expression<'a>>>), Error<'a>>
+		-> Result<(Vec<Box<Expression<'a>>>, Vec<Box<Expression<'a>>>), Error<'a>>
 	{
 		let mut keys = Vec::new();
 		let mut values = Vec::new();
@@ -45,8 +44,8 @@ impl<'a> Parser<'a> {
 				error(&self.source[..0], "expected `='".to_string())
 			)?;
 			let value = self.parse_expression(&element_end)?;
-			keys.push(Rc::new(Expression::Literal(Literal::String(key))));
-			values.push(Rc::new(value));
+			keys.push(Box::new(Expression::Literal(Literal::String(key))));
+			values.push(Box::new(value));
 		}
 	}
 
@@ -91,7 +90,7 @@ impl<'a> Parser<'a> {
 				None => Err(error(&self.source[..0], format!("missing expression after unary `{}' operator", op_source))),
 				Some(subexpr) => Ok(Some(Expression::Op{
 					op_source: op_source,
-					op: Op::UnaryOp{op, rhs: Rc::new(subexpr)},
+					op: Op::UnaryOp{op, rhs: Box::new(subexpr)},
 					parenthesized: false
 				}))
 			}
@@ -152,14 +151,14 @@ impl<'a> Parser<'a> {
 		let old_lhs: &mut Expression<'a> = find_lhs(op, op_source, expr)?;
 
 		// Use a dummy value of Identifier("") while we swap the nodes around.
-		let new_lhs = Rc::new(mem::replace(old_lhs, Expression::Identifier("")));
+		let new_lhs = Box::new(mem::replace(old_lhs, Expression::Identifier("")));
 
 		*old_lhs = Expression::Op{
 			op_source: op_source,
 			op: Op::BinaryOp{
 				op: op,
 				lhs: new_lhs,
-				rhs: Rc::new(rhs),
+				rhs: Box::new(rhs),
 			},
 			parenthesized: false,
 		};
@@ -280,9 +279,9 @@ fn find_lhs<'a, 'b>(
 				parenthesized: false,
 				..
 			} if !is_lhs(e_op.op(), e_op_source, op, op_source)? => {
-				expr = Rc::get_mut(match e_op {
-					Op::UnaryOp{rhs, ..} | Op::BinaryOp{rhs, ..} => rhs
-				}).unwrap();
+				expr = match e_op {
+					Op::UnaryOp{rhs, ..} | Op::BinaryOp{rhs, ..} => rhs,
+				};
 			}
 			_ => return Ok(current)
 		}

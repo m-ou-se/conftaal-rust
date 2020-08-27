@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use operator::{UnaryOperator, BinaryOperator, Operator};
 
 #[derive(Debug)]
@@ -17,12 +15,12 @@ pub enum Expression<'a> {
 pub enum Op<'a> {
 	UnaryOp{
 		op: UnaryOperator,
-		rhs: Rc<Expression<'a>>,
+		rhs: Box<Expression<'a>>,
 	},
 	BinaryOp{
 		op: BinaryOperator,
-		rhs: Rc<Expression<'a>>,
-		lhs: Rc<Expression<'a>>,
+		rhs: Box<Expression<'a>>,
+		lhs: Box<Expression<'a>>,
 	},
 }
 
@@ -40,6 +38,6 @@ pub enum Literal<'a> {
 	Integer(u64),
 	Double(f64),
 	String(&'a str),
-	List(Vec<Rc<Expression<'a>>>),
-	Object(Vec<Rc<Expression<'a>>>, Vec<Rc<Expression<'a>>>),
+	List(Vec<Box<Expression<'a>>>),
+	Object(Vec<Box<Expression<'a>>>, Vec<Box<Expression<'a>>>),
 }

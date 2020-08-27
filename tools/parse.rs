@@ -1,13 +1,12 @@
 extern crate conftaal;
 
-use std::rc::Rc;
 use std::{env, fs};
 
 use conftaal::expression::{Expression, Op, Literal};
 use conftaal::parse::Parser;
 use conftaal::parse::end::End;
 
-fn format_list(list: &Vec<Rc<Expression>>) -> String {
+fn format_list(list: &Vec<Box<Expression>>) -> String {
 	let mut s = "(list".to_string();
 	for e in list.iter() {
 		s += " ";
