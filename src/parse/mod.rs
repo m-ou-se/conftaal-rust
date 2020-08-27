@@ -308,23 +308,25 @@ impl<'a> Parser<'a> {
 fn find_lhs<'a, 'b>(
     op: BinaryOperator,
     op_source: &'a str,
-    mut expr: &'b mut Expression<'a>,
+    expr: &'b mut Expression<'a>,
 ) -> Result<&'b mut Expression<'a>, Error<'a>> {
+    // Hack needed because of a limitation of the NLL borrow checker.
+    // The Polonius borrow checker doesn't need this.
+    // See: http://smallcultfollowing.com/babysteps/blog/2018/06/15/mir-based-borrow-check-nll-status-update/#polonius
+    let mut expr: *mut Expression<'a> = expr;
     loop {
-        let current = expr;
-        match current {
+        expr = match unsafe { &mut *expr } {
             Expression::Op {
                 op: e_op,
                 op_source: e_op_source,
                 parenthesized: false,
-                ..
             } if !is_lhs(e_op.op(), e_op_source, op, op_source)? => {
-                expr = match e_op {
-                    Op::UnaryOp { rhs, .. } | Op::BinaryOp { rhs, .. } => rhs,
-                };
+                match e_op {
+                    Op::UnaryOp { rhs, .. } | Op::BinaryOp { rhs, .. } => rhs.as_mut(),
+                }
             }
-            _ => return Ok(current),
-        }
+            e => return Ok(e),
+        };
     }
 }
 
