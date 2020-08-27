@@ -52,8 +52,8 @@ impl<'a> Parser<'a> {
 	pub fn parse_identifier(&mut self) -> Option<&'a str> {
 		fn is_identifier_char(c: char, start: bool) -> bool {
 			match c {
-				'a'...'z' | 'A'...'Z' | '_' => true,
-				'0'...'9' => !start,
+				'a'..='z' | 'A'..='Z' | '_' => true,
+				'0'..='9' => !start,
 				_ => false,
 			}
 		}
